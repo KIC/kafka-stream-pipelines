@@ -1,0 +1,3 @@
+rootProject.name = 'Bolts'
+include 'EmbeddedKafka'
+

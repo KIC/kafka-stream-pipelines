@@ -1,0 +1,16 @@
+group 'kic.kafka.pipelet'
+version '1.0-SNAPSHOT'
+
+apply plugin: 'scala'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile 'org.scala-lang:scala-compiler:2.11.12'
+    compile 'org.scala-lang:scala-library:2.11.12'
+    compile 'net.manub:scalatest-embedded-kafka_2.11:1.0.0'
+}
