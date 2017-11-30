@@ -1,4 +1,4 @@
-package kic.kafka.pipelets.bolts.services
+package kic.lambda.dispatch
 
 import groovyx.net.http.ContentType
 import groovyx.net.http.HTTPBuilder

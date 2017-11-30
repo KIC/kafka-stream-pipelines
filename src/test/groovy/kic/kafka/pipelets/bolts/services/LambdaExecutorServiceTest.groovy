@@ -1,6 +1,8 @@
 package kic.kafka.pipelets.bolts.services
 
 import com.github.tomakehurst.wiremock.junit.WireMockClassRule
+import kic.lambda.dispatch.LambdaException
+import kic.lambda.dispatch.LambdaExecutorService
 import org.junit.ClassRule
 import spock.lang.Specification
 import static groovyx.net.http.Method.*

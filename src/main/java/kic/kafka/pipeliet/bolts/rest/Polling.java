@@ -2,6 +2,8 @@ package kic.kafka.pipeliet.bolts.rest;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
+import com.github.benmanes.caffeine.cache.RemovalCause;
+import kic.kafka.pipeliet.bolts.dto.CacheKey;
 import kic.kafka.pipeliet.bolts.dto.PollResult;
 import kic.kafka.pipeliet.bolts.services.KafkaServiceFactory;
 import org.apache.commons.lang.exception.ExceptionUtils;
@@ -17,8 +19,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.springframework.web.bind.annotation.RequestMethod.GET;
@@ -31,11 +33,11 @@ public class Polling {
     @Autowired
     private KafkaServiceFactory kafkaServiceFactory;
 
-    private LoadingCache<String, KafkaConsumer<Long, String>> consumers = Caffeine.newBuilder()
+    private LoadingCache<CacheKey, KafkaConsumer<Long, String>> consumers = Caffeine.newBuilder()
             .maximumSize(10_000)
-            .expireAfterAccess(1, TimeUnit.MINUTES) // should be (a bit) less then kafka setting of "session.timeout.ms" so that we can close the consumer
-            .removalListener((k, v, c) -> ((KafkaConsumer) v).close())
-            .build(key -> kafkaServiceFactory.createConsumer("foo", key, 0));
+            .expireAfterAccess(59, TimeUnit.SECONDS) // should be less then kafka setting of "heartbeat.interval.ms" so that we can close the consumer
+            .removalListener(Polling::closeConsumer)
+            .build(key -> kafkaServiceFactory.createConsumer(key.pipeline, key.topic, 0)); // FIXME should not be foo!
 
     @RequestMapping(path = "/{pipelineName}/{topic}", method = GET)
     private PollResult poll(
@@ -44,23 +46,33 @@ public class Polling {
             @RequestParam(defaultValue = "0") long offset
     ) {
         try {
-            KafkaConsumer<Long, String> consumer = consumers.get(topic);
-
-            // TODO implement seek handling if offset is different from last offset
+            KafkaConsumer<Long, String> consumer = consumers.get(new CacheKey(pipelineName, topic));
             consumer.partitionsFor(topic).forEach(pi -> consumer.seek(new TopicPartition(topic, pi.partition()), offset));
             ConsumerRecords<Long, String> poll = consumer.poll(100);
-            Map<Long, String> result = new LinkedHashMap<>();
+
+            List<Long> keys = new LinkedList<>();
+            List<String> values = new LinkedList<>();
             long lastOffset = offset;
 
             for (ConsumerRecord<Long, String> record : poll) {
                 lastOffset = record.offset();
-                result.put(record.key(), record.value());
+                keys.add(record.key());
+                values.add(record.value());
             }
 
-            return new PollResult(lastOffset, result);
+            return new PollResult(lastOffset, keys, values);
         } catch (Exception e) {
             log.error("Polling exception", e);
             return new PollResult(ExceptionUtils.getStackTrace(e));
+        }
+    }
+
+    private static void closeConsumer(CacheKey key, KafkaConsumer<Long, String> consumer, RemovalCause cause) {
+        try {
+            log.info("close consumer: {}", key);
+            consumer.close();
+        } catch (Exception e) {
+            log.error("failed to close consumer", e);
         }
     }
 }

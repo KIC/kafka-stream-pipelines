@@ -1,6 +1,6 @@
 package kic.kafka.pipeliet.bolts.services.bolting;
 
-import kic.kafka.pipelets.bolts.services.LambdaExecutor;
+import kic.lambda.dispatch.LambdaExecutor;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;

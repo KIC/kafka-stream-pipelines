@@ -1,16 +1,19 @@
 package kic.kafka.pipeliet.bolts.dto;
 
-import java.util.Map;
+import java.util.List;
 
 public class PollResult {
     private final boolean success;
     private long offset = -1L;
-    private Map result = null;
+    private List keys = null;
+    private List values = null;
     private String error;
 
-    public PollResult(long offset, Map result) {
+    public PollResult(long offset, List keys, List values) {
+        if (keys.size() != values.size()) throw new IllegalArgumentException("keys and values not of same size");
         this.offset = offset;
-        this.result = result;
+        this.keys = keys;
+        this.values = values;
         this.success = true;
     }
 
@@ -31,12 +34,20 @@ public class PollResult {
         this.offset = offset;
     }
 
-    public Map getResult() {
-        return result;
+    public List getKeys() {
+        return keys;
     }
 
-    public void setResult(Map result) {
-        this.result = result;
+    public void setKeys(List keys) {
+        this.keys = keys;
+    }
+
+    public List getValues() {
+        return values;
+    }
+
+    public void setValues(List values) {
+        this.values = values;
     }
 
     public String getError() {

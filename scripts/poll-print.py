@@ -20,7 +20,8 @@ while True:
     if response['success']:
         print(response['offset'])
         print(response)
-        lastOffset = response['offset'] + 1
+        if len(response['result']) > 0:
+            lastOffset = response['offset'] + 1
     else:
         print(response['error'])
 

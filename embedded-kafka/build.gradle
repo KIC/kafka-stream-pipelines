@@ -13,4 +13,6 @@ dependencies {
     compile 'org.scala-lang:scala-compiler:2.11.12'
     compile 'org.scala-lang:scala-library:2.11.12'
     compile 'net.manub:scalatest-embedded-kafka_2.11:1.0.0'
+
+    testCompile group: 'junit', name: 'junit', version: '4.12'
 }
