@@ -39,7 +39,6 @@ class RestExecutorTest {
                     .withBody("success!")
                 )
         )
-
     }
 
     @Test
@@ -54,7 +53,6 @@ class RestExecutorTest {
         } catch (RestException re) {
             assert re.httpStatusCode == 404
         }
-
     }
 
     @Test
@@ -81,5 +79,5 @@ class RestExecutorTest {
     static void shutDown() {
         wireMockServer.stop()
     }
-    
+
 }

@@ -6,6 +6,7 @@ import groovyx.net.http.ContentType
 import groovyx.net.http.HTTPBuilder
 import groovyx.net.http.HttpResponseException
 import groovyx.net.http.Method
+import java.util.function.Function
 import static groovyx.net.http.ContentType.*
 import static java.net.URLEncoder.*
 
@@ -20,7 +21,11 @@ class RestExecutor {
         this.urlEncode = urlEncode
     }
 
-    def executeTemplate(Method method, String url, String payload = "", ContentType contentType = JSON) {
+    def <T>T executeTemplate(Method method, String url, String payload, ContentType contentType, Function<String, T> responseProcessor) {
+        return responseProcessor.apply(executeTemplate(method, url, payload, contentType))
+    }
+
+    String executeTemplate(Method method, String url, String payload = "", ContentType contentType = JSON) {
         def lambdaUrl = templateEngine.createTemplate(url)
                                       .make(bindings.collectEntries { entry -> [(entry.key) : (urlEncode ? encode(entry.value) : entry.value)] })
                                       .toString()
@@ -33,7 +38,7 @@ class RestExecutor {
         return execute(method, lambdaUrl, lambdaBody, contentType)
     }
 
-    def static execute(Method method, URL lambdaUrl, Object payload = null, ContentType contentType = JSON, Map queryParameter = [:], Map extraHeaders = [:]) {
+    static String execute(Method method, URL lambdaUrl, Object payload = null, ContentType contentType = JSON, Map queryParameter = [:], Map extraHeaders = [:]) {
         // lambdaUrl.query = queryParameter
         log.info("exec: $method:$lambdaUrl\n$payload")
         def lambda = new HTTPBuilder(lambdaUrl)
@@ -57,6 +62,7 @@ class RestExecutor {
             throw new RestException(lambdaResponseStatus, lambdaResponse, e)
         }
 
+        if (log.isDebugEnabled()) log.debug("respose($lambdaResponseStatus):\n$lambdaResponse")
         return lambdaResponse
     }
 
