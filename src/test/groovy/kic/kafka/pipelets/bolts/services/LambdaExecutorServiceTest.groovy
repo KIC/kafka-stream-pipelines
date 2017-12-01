@@ -1,8 +1,8 @@
 package kic.kafka.pipelets.bolts.services
 
 import com.github.tomakehurst.wiremock.junit.WireMockClassRule
-import kic.lambda.dispatch.LambdaException
-import kic.lambda.dispatch.LambdaExecutorService
+import kic.lambda.dispatch.RestException
+import kic.lambda.dispatch.RestExecutor
 import org.junit.ClassRule
 import spock.lang.Specification
 import static groovyx.net.http.Method.*
@@ -15,13 +15,13 @@ class LambdaExecutorServiceTest extends Specification {
 
     def "Execute"() {
         given:
-        def lambdaExector = new LambdaExecutorService(new URL(lambda + path))
+        def lambdaExector = new RestExecutor(new URL(lambda + path))
         def result = null
 
         when:
         try {
             result = lambdaExector.execute(lambdaMethod)
-        } catch (LambdaException le) {
+        } catch (RestException le) {
             result = le.httpStatusCode
         }
 
