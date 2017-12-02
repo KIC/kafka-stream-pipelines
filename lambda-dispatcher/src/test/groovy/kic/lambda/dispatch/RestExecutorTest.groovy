@@ -8,8 +8,6 @@ import org.junit.BeforeClass
 import org.junit.Test
 import static groovy.json.JsonOutput.*
 import static groovyx.net.http.ContentType.*
-
-
 import static com.github.tomakehurst.wiremock.client.WireMock.*
 import static groovyx.net.http.Method.*
 
