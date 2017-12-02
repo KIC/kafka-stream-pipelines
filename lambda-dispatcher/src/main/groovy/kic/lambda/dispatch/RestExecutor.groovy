@@ -9,6 +9,7 @@ import groovyx.net.http.Method
 import java.util.function.Function
 import static groovyx.net.http.ContentType.*
 import static java.net.URLEncoder.*
+import static groovyx.net.http.Method.*
 
 @Slf4j
 class RestExecutor {
@@ -27,7 +28,7 @@ class RestExecutor {
 
     String executeTemplate(Method method, String url, String payload = "", ContentType contentType = JSON) {
         def lambdaUrl = templateEngine.createTemplate(url)
-                                      .make(bindings.collectEntries { entry -> [(entry.key) : (urlEncode ? encode(entry.value) : entry.value)] })
+                                      .make(bindings.collectEntries { entry -> [(entry.key) : (urlEncode && entry.value != null ? encode(entry.value) : entry.value)] })
                                       .toString()
                                       .toURL()
 
@@ -35,7 +36,7 @@ class RestExecutor {
                                        .make(bindings)
                                        .toString()
 
-        return execute(method, lambdaUrl, lambdaBody, contentType)
+        return execute(method, lambdaUrl, lambdaBody.isEmpty() ? null : lambdaBody, contentType)
     }
 
     static String execute(Method method, URL lambdaUrl, Object payload = null, ContentType contentType = JSON, Map queryParameter = [:], Map extraHeaders = [:]) {
@@ -53,7 +54,7 @@ class RestExecutor {
 
                 response.success = { resp, reader ->
                     lambdaResponseStatus = resp.statusLine.statusCode
-                    lambdaResponse = reader.text
+                    lambdaResponse = Reader.isAssignableFrom(reader.getClass()) ? reader.text : reader.toString()
                 }
             }
         } catch (HttpResponseException hre) {

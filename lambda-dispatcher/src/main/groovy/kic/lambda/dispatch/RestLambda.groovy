@@ -18,7 +18,7 @@ class RestLambda implements BiFunction<String, Object, String> {
     RestLambda(String urlTemplate, Method httpMethod = GET, String payloadTemplate = "", ContentType payloadContentType = JSON) {
         this.httpMethod = httpMethod
         this.urlTemplate = urlTemplate
-        this.payloadTemplate = payloadTemplate
+        this.payloadTemplate = payloadTemplate ?: ""
         this.payloadContentType = payloadContentType
     }
 
