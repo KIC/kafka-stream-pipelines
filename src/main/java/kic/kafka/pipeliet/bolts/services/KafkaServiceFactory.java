@@ -76,4 +76,12 @@ public class KafkaServiceFactory {
         getAdminClient().createTopics(Arrays.asList(new NewTopic(topic, nrOfPartitions, (short) replicas)));
     }
 
+    public void deleteTopic(String topic) {
+        getAdminClient().deleteTopics(Arrays.asList(topic));
+    }
+
+    public void recreateTopic(String topic, int nrOfPartitions, int replicas) {
+        deleteTopic(topic);
+        createTopic(topic, nrOfPartitions, replicas);
+    }
 }

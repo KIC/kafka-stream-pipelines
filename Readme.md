@@ -26,4 +26,11 @@ m-beginning`
 
 ## Ideas
 * the pipelines should be visualized i.e. in [such a diagram](https://gojs.net/latest/samples/dynamicPorts.html)
-  
+
+## Demo
+* We can unse an embedded kafka server for demo or testing purpose
+* To realtime plot from a topic we can use [plotly dash](https://plot.ly/dash/).
+  This is a python library and sadly the pyhton kafka client is not yet there for kafka 1.0.
+  As a workaround there is a rest endpoint provided to poll on a topic
+* We could fast and easily create python rest apis using [flask](https://blog.miguelgrinberg.com/post/designing-a-restful-api-with-python-and-flask)  
+* there is a flask like api for groovy but sadly this has a [bug](https://github.com/perwendel/spark/issues/946#issuecomment-348493178)

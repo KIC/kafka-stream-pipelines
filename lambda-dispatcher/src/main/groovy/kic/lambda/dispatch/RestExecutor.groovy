@@ -28,7 +28,7 @@ class RestExecutor {
         return responseProcessor.apply(executeTemplate(method, url, payload, contentType))
     }
 
-    String executeTemplate(Method method, String url, String payload = "", ContentType contentType = JSON) {
+    RestResponse executeTemplate(Method method, String url, String payload = "", ContentType contentType = JSON) {
         def lambdaUrl = templateEngine.createTemplate(url)
                                       .make(bindings.collectEntries { entry -> [(entry.key) : (urlEncode && entry.value != null ? encode(entry.value.toString()) : entry.value)] })
                                       .toString()
@@ -41,12 +41,12 @@ class RestExecutor {
         return execute(method, lambdaUrl, lambdaBody.isEmpty() ? null : lambdaBody, contentType)
     }
 
-    static String execute(Method method, URL lambdaUrl, Object payload = null, ContentType contentType = JSON, Map queryParameter = [:], Map extraHeaders = [:]) {
+    static RestResponse execute(Method method, URL lambdaUrl, Object payload = null, ContentType contentType = JSON, Map queryParameter = [:], Map extraHeaders = [:]) {
         // lambdaUrl.query = queryParameter
         log.info("exec: $method:$lambdaUrl\n$payload")
         def lambda = new HTTPBuilder(lambdaUrl)
         def lambdaResponseStatus = -1
-        def lambdaResponse = ""
+        def lambdaResponse = null
 
         try {
             lambda.request(method, BINARY) {
@@ -55,18 +55,16 @@ class RestExecutor {
                 send contentType, payload
 
                 response.success = { resp, reader ->
-                    String charset = EntityUtils.getContentCharSet(resp.entity)
-                    String body = new String(reader.bytes, charset ?: "UTF-8")
-                    if (log.isDebugEnabled())log.debug("response $charset: $body")
-
                     lambdaResponseStatus = resp.statusLine.statusCode
-                    lambdaResponse = body
+                    lambdaResponse = new RestResponse(lambdaResponseStatus,
+                                                      EntityUtils.getContentCharSet(resp.entity) ?: "UTF-8",
+                                                      reader.bytes)
                 }
             }
         } catch (HttpResponseException hre) {
-            throw new RestException(hre.statusCode, lambdaResponse, hre)
+            throw new RestException(hre.statusCode, lambdaResponse?.toString(), hre)
         } catch (Exception e) {
-            throw new RestException(lambdaResponseStatus, lambdaResponse, e)
+            throw new RestException(lambdaResponseStatus, lambdaResponse?.toString(), e)
         }
 
         if (log.isDebugEnabled()) log.debug("respose($lambdaResponseStatus):\n$lambdaResponse")
@@ -86,10 +84,19 @@ class RestException extends Exception {
 
 }
 
-/*
-i want something like
-execute("GET:http://lala/some/endpoint?key=$KEY&value=$VALUE&last_result=$LAST_RESULT)
-execute("POST|application/json|$PAYLOAD:http://lala/some/endpoint?key=$KEY&value=$VALUE)
+class RestResponse implements Serializable {
+    public final int httpStatus
+    public final String encoding
+    public final byte[] bytes
 
-or we just define a data structure how we want our
- */
+    RestResponse(int httpStatus, String encoding, byte[] bytes) {
+        this.httpStatus = httpStatus
+        this.encoding = encoding
+        this.bytes = bytes
+    }
+
+    @Override
+    String toString() {
+        return new String(bytes, encoding)
+    }
+}

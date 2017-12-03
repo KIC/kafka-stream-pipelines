@@ -49,12 +49,12 @@ class RestExecutorTest {
 
     @Test
     void testExecuteSuccess() {
-        assert RestExecutor.execute(GET, "http://localhost:$PORT/successful/get".toURL()) == "success!"
+        assert RestExecutor.execute(GET, "http://localhost:$PORT/successful/get".toURL()).toString() == "success!"
     }
 
     @Test
     void testExecuteSuccessJson() {
-        assert RestExecutor.execute(GET, "http://localhost:$PORT/successful/get/json".toURL()) == toJson([success: 1])
+        assert RestExecutor.execute(GET, "http://localhost:$PORT/successful/get/json".toURL()).toString() == toJson([success: 1])
     }
 
     @Test
@@ -82,7 +82,7 @@ class RestExecutorTest {
         def payload = '{"a" : "$aa", "b" : "$bb"}'
 
         // now we can execute a template
-        def result = rest.executeTemplate(POST, url, payload, TEXT)
+        def result = rest.executeTemplate(POST, url, payload, TEXT).toString()
         assert result == "success!"
     }
 

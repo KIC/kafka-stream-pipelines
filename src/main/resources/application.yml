@@ -18,6 +18,7 @@ bolts:
     kafka-port: 9092
   kafka:
     "[bootstrap.servers]":      "localhost:9092"
+    "[delete.enable.topic]":    "true"
     #consumer
     "[group.id]":               "default-group"
     "[heartbeat.interval.ms]":  "59990"
