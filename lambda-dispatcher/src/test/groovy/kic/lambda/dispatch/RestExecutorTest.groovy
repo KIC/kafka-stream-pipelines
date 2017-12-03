@@ -3,6 +3,7 @@ package kic.lambda.dispatch
 import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.matching.ContainsPattern
 import com.github.tomakehurst.wiremock.matching.EqualToPattern
+import groovy.json.JsonOutput
 import org.junit.AfterClass
 import org.junit.BeforeClass
 import org.junit.Test
@@ -28,6 +29,13 @@ class RestExecutorTest {
                 )
         )
 
+        wireMockServer.stubFor(get(urlEqualTo("/successful/get/json"))
+                .willReturn(aResponse()
+                    .withHeader("Content-Type", "application/json")
+                    .withBody("{\"success\":1}")
+                )
+        )
+
         wireMockServer.stubFor(post("/successful/post?a=A&b=%26B")
                 .withQueryParam("a", new EqualToPattern("A"))
                 .withQueryParam("b", new EqualToPattern("&B"))
@@ -42,6 +50,11 @@ class RestExecutorTest {
     @Test
     void testExecuteSuccess() {
         assert RestExecutor.execute(GET, "http://localhost:$PORT/successful/get".toURL()) == "success!"
+    }
+
+    @Test
+    void testExecuteSuccessJson() {
+        assert RestExecutor.execute(GET, "http://localhost:$PORT/successful/get/json".toURL()) == toJson([success: 1])
     }
 
     @Test

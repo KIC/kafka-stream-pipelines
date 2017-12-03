@@ -6,6 +6,8 @@ import groovyx.net.http.ContentType
 import groovyx.net.http.HTTPBuilder
 import groovyx.net.http.HttpResponseException
 import groovyx.net.http.Method
+import org.apache.http.util.EntityUtils
+
 import java.util.function.Function
 import static groovyx.net.http.ContentType.*
 import static java.net.URLEncoder.*
@@ -28,7 +30,7 @@ class RestExecutor {
 
     String executeTemplate(Method method, String url, String payload = "", ContentType contentType = JSON) {
         def lambdaUrl = templateEngine.createTemplate(url)
-                                      .make(bindings.collectEntries { entry -> [(entry.key) : (urlEncode && entry.value != null ? encode(entry.value) : entry.value)] })
+                                      .make(bindings.collectEntries { entry -> [(entry.key) : (urlEncode && entry.value != null ? encode(entry.value.toString()) : entry.value)] })
                                       .toString()
                                       .toURL()
 
@@ -47,14 +49,18 @@ class RestExecutor {
         def lambdaResponse = ""
 
         try {
-            lambda.request(method) {
+            lambda.request(method, BINARY) {
                 headers.'User-Agent' = "Mozilla/5.0 Firefox/3.0.4"
                 headers << extraHeaders
                 send contentType, payload
 
                 response.success = { resp, reader ->
+                    String charset = EntityUtils.getContentCharSet(resp.entity)
+                    String body = new String(reader.bytes, charset ?: "UTF-8")
+                    if (log.isDebugEnabled())log.debug("response $charset: $body")
+
                     lambdaResponseStatus = resp.statusLine.statusCode
-                    lambdaResponse = Reader.isAssignableFrom(reader.getClass()) ? reader.text : reader.toString()
+                    lambdaResponse = body
                 }
             }
         } catch (HttpResponseException hre) {

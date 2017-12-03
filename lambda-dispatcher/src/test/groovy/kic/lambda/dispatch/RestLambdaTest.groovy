@@ -16,19 +16,40 @@ class RestLambdaTest {
     @ClassRule
     public static final SparkServerRule SPARK_SERVER = new SparkServerRule({http ->
         http.get("/ping", { request, response  -> "pong" })
-        http.get("/health", { request, response -> "healthy" })
+        http.get("/accumulate", { request, response ->
+            request.queryParams("state").toDouble() + request.queryParams("value").toDouble()
+        })
+        http.post("/accumulate", { request, response ->
+            request.body().toDouble() + request.queryParams("value").toDouble()
+        })
     })
 
     @Test
-    void testApply() {
+    void testSimpleApply() {
         def restLambda = new RestLambda("http://localhost:4567/ping")
-        // TODO we should have an add one lambda where we can test newState = currentState + event
-        println(restLambda.apply("", null))
+        assert restLambda.apply(null, null) == "pong"
     }
 
+    @Test
+    void testAccumulatingApplyViaGet() {
+        def accumulateEventsLambda = new RestLambda('http://localhost:4567/accumulate?state=$state&key=&value=$event')
+        def state = "1"
 
-    @AfterClass
-    static void shutDown() {
-
+        for(int i=0; i<10; i++) {
+            state = accumulateEventsLambda.apply(state, 1d)
+            assert (i + 2d) == state.toDouble()
+        }
     }
+
+    @Test
+    void testAccumulatingApplyViaPost() {
+        def accumulateEventsLambda = new RestLambda('http://localhost:4567/accumulate?key=&value=$event', POST, '$state')
+        def state = "1"
+
+        for(int i=0; i<10; i++) {
+            state = accumulateEventsLambda.apply(state, 1d)
+            assert (i + 2d) == state.toDouble()
+        }
+    }
+
 }
