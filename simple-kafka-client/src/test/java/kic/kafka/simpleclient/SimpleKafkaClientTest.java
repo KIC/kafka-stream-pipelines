@@ -3,11 +3,11 @@ package kic.kafka.simpleclient;
 import kic.kafka.embedded.EmbeddedKafaJavaWrapper$;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.junit.AfterClass;
-import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Properties;
 
 import static org.junit.Assert.*;
@@ -22,15 +22,6 @@ public class SimpleKafkaClientTest {
         System.out.println(properties);
         EmbeddedKafaJavaWrapper$.MODULE$.start(10010, 10020, properties);
         client = new SimpleKafkaClient(properties);
-    }
-
-    @Test
-    public void send() throws Exception {
-        final String topic = "create-test-push-topic";
-        client.createTopic(1,1, topic);
-        client.send(topic, 1L, "test message");
-        ConsumerRecords<Long, String> records = client.poll("test-client", topic, Long.class, String.class,0, 1000);
-        assertTrue(records.count() > 0);
     }
 
     @Test
@@ -52,6 +43,47 @@ public class SimpleKafkaClientTest {
         assertTrue(client.listTopics().contains(topic));
         client.deleteTopic(topic);
         assertFalse(client.listTopics().contains(topic));
+    }
+
+
+    @Test
+    public void sendAndPoll() throws Exception {
+        final String topic = "create-test-push-topic";
+        client.createTopic(1,1, topic);
+        client.send(topic, 1L, "test message");
+        ConsumerRecords<Long, String> records = client.poll("test-client", topic, Long.class, String.class,0, 1000);
+        assertTrue(records.count() > 0);
+    }
+
+
+    // we need to test some corner cases
+
+    @Test // first listen on a topic and then create it and send something afterwards
+    public void testListenOnNotPreExisitngTopic() {
+        final String topic = "create-test-poll-before-send-topic";
+        ConsumerRecords<Long, String> records = client.poll("test-client", topic, Long.class, String.class,0, 1000);
+        assertTrue(records.isEmpty());
+
+        client.createTopic(1,1, topic);
+        client.send(topic, 1L, "test message");
+
+        records = client.poll("test-client", topic, Long.class, String.class,0, 1000);
+        assertTrue(records.count() > 0);
+    }
+
+    @Test // create send and poll for a message using an object which has no defined serializer
+    public void restDefaultObjectSerialization() {
+        final String topic = "create-objects-topic";
+        client.createTopic(1,1, topic);
+        client.send(topic, 1L, new ArrayList<>());
+        ConsumerRecords<Long, ArrayList> records = client.poll("test-client", topic, Long.class, ArrayList.class, 0, 1000);
+        assertTrue(records.count() > 0);
+        assertEquals(0, records.iterator().next().value().size());
+    }
+
+    // if a consumer misses to send a heartbeat and gets stalled we want to decetc, close and recreate a new consumer
+    public void testUnresponsiveClient() {
+        // TODO how can we test that
     }
 
     @AfterClass
