@@ -33,6 +33,7 @@ dependencies {
     // Modules like Embedded Kafka and Lambda Dispatcher
     compile project(':embedded-kafka')
     compile project(':lambda-dispatcher')
+    compile project(':simple-kafka-client')
 
     compile 'org.springframework.cloud:spring-cloud-starter'
     compile 'org.springframework.boot:spring-boot-devtools'

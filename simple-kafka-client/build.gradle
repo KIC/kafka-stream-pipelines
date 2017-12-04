@@ -1,0 +1,24 @@
+group 'kic.kafka.pipelet'
+version '1.0-SNAPSHOT'
+
+apply plugin: 'java'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Kafka
+    compile 'org.apache.kafka:kafka-clients:1.0.0'
+
+    // Cache
+    compile 'com.github.ben-manes.caffeine:caffeine:2.6.0'
+
+    // Serialization utils
+    compile 'org.apache.commons:commons-lang3:3.7'
+
+    testCompile 'junit:junit:4.12'
+    testCompile project(':embedded-kafka')
+}

@@ -1,3 +1,5 @@
 rootProject.name = 'Bolts'
 include 'embedded-kafka'
 include 'lambda-dispatcher'
+include 'simple-kafka-client'
+

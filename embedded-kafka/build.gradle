@@ -15,6 +15,7 @@ dependencies {
     compile 'net.manub:scalatest-embedded-kafka_2.11:1.0.0'
 
     testCompile 'junit:junit:4.12'
+    testCompile 'ch.qos.logback:logback-classic:1.0.13'
     testCompile 'org.apache.kafka:kafka-clients:1.0.0'
     testCompile 'org.scalatest:scalatest_2.11:3.0.1'
     testRuntime 'org.pegdown:pegdown:1.4.2'
