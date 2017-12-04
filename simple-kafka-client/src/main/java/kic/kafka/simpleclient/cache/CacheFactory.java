@@ -8,7 +8,10 @@ import kic.kafka.simpleclient.objectserialization.ObjectDeSerializer;
 import kic.kafka.simpleclient.objectserialization.ObjectSerializer;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.common.PartitionInfo;
+import org.apache.kafka.common.TopicPartition;
 
+import java.util.Arrays;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -66,6 +69,9 @@ public class CacheFactory {
                 .with("value.deserializer", valueDeSerializer)
                 .with("group.id", groupId)
                 .extend());
+
+        consumer.subscribe(Arrays.asList(cacheKey.topic));
+        consumer.poll(0);
 
         return consumer;
     }

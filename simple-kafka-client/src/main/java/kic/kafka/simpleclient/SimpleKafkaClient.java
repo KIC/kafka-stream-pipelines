@@ -12,6 +12,8 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.PartitionInfo;
+import org.apache.kafka.common.TopicPartition;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -48,15 +50,20 @@ public class SimpleKafkaClient {
         }
     }
 
-    public <K, V>ConsumerRecords<K, V> poll(String name, String topic, Class<K> keyClass, Class<V> valueClass, long timeOutInMs) {
+    public <K, V>ConsumerRecords<K, V> poll(String name, String topic, Class<K> keyClass, Class<V> valueClass, long offset, long timeOutInMs) {
         // Hide away the consumer, we keep the consumers depending on a name + a topic in a caffeine cache
         ConsumerCacheKey cacheKey = new ConsumerCacheKey(name, topic, keyClass, valueClass);
         KafkaConsumer<K, V> consumer = (KafkaConsumer<K, V>) consumers.get(cacheKey);
+        seek(consumer, topic, offset);
 
-        // TODO we need to do a fake pull eventually seek and
         // if we have an unresponsive consumer we close it and create a new one
         // do we need to keep an offset somewhere ... ??? we can have different offsets per name
         return consumer.poll(timeOutInMs);
+    }
+
+    public void seek(KafkaConsumer<?, ?> consumer, String topic, long offset) {
+        consumer.partitionsFor(topic)
+                .forEach(partInfo -> consumer.seek(new TopicPartition(topic, partInfo.partition()), offset));
     }
 
     /**

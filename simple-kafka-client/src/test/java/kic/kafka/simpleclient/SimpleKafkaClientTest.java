@@ -1,6 +1,7 @@
 package kic.kafka.simpleclient;
 
 import kic.kafka.embedded.EmbeddedKafaJavaWrapper$;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -25,10 +26,11 @@ public class SimpleKafkaClientTest {
 
     @Test
     public void send() throws Exception {
-    }
-
-    @Test
-    public void poll() throws Exception {
+        final String topic = "create-test-push-topic";
+        client.createTopic(1,1, topic);
+        client.send(topic, 1L, "test message");
+        ConsumerRecords<Long, String> records = client.poll("test-client", topic, Long.class, String.class,0, 1000);
+        assertTrue(records.count() > 0);
     }
 
     @Test
