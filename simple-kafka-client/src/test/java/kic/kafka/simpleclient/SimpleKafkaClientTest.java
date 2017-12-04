@@ -81,7 +81,7 @@ public class SimpleKafkaClientTest {
         assertEquals(0, records.iterator().next().value().size());
     }
 
-    // if a consumer misses to send a heartbeat and gets stalled we want to decetc, close and recreate a new consumer
+    // if a consumer misses to send a heartbeat and gets stalled we want to detect, close and recreate the consumer
     public void testUnresponsiveClient() {
         // TODO how can we test that
     }

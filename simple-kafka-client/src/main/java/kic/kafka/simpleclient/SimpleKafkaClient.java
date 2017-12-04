@@ -20,6 +20,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import static java.util.stream.Collectors.toList;
 
@@ -53,12 +54,20 @@ public class SimpleKafkaClient {
     public <K, V>ConsumerRecords<K, V> poll(String name, String topic, Class<K> keyClass, Class<V> valueClass, long offset, long timeOutInMs) {
         // Hide away the consumer, we keep the consumers depending on a name + a topic in a caffeine cache
         ConsumerCacheKey cacheKey = new ConsumerCacheKey(name, topic, keyClass, valueClass);
-        KafkaConsumer<K, V> consumer = (KafkaConsumer<K, V>) consumers.get(cacheKey);
-        seek(consumer, topic, offset);
 
-        // if we have an unresponsive consumer we close it and create a new one
-        // do we need to keep an offset somewhere ... ??? we can have different offsets per name
-        return consumer.poll(timeOutInMs);
+        // only one poll at a time for the same consumer is allowed
+        synchronized (cacheKey.getLockObject()) {
+            KafkaConsumer<K, V> consumer = (KafkaConsumer<K, V>) consumers.get(cacheKey);
+
+            // TODO we should only need to seek if the current offset is different
+            seek(consumer, topic, offset);
+
+            // if we have an unresponsive consumer we close it and create a new one
+            // do we need to keep an offset somewhere ... ??? we can have different offsets per name
+
+            // to remember the last offset we should return an iterator wrapping around the ConsumerRecords#iterator
+            return consumer.poll(timeOutInMs);
+        }
     }
 
     public void seek(KafkaConsumer<?, ?> consumer, String topic, long offset) {
@@ -109,4 +118,5 @@ public class SimpleKafkaClient {
             // FIXME what should we do? e.printStackTrace();
         }
     }
+
 }

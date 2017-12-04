@@ -1,16 +1,25 @@
 package kic.kafka.simpleclient.cache;
 
+import java.util.UUID;
+
 public class ConsumerCacheKey {
+    private static final String NAME_SPANCE = "%" + UUID.randomUUID().toString();
+    private final String lock;
     public final String name;
     public final String topic;
     public final String keyClass;
     public final String valueClass;
 
     public <K, V> ConsumerCacheKey(String name, String topic, Class<K> keyClass, Class<V> valueClass) {
+        this.lock = (NAME_SPANCE + "|" + name + "|" + topic).intern();
         this.name = name;
         this.topic = topic;
         this.keyClass = keyClass.getName();
         this.valueClass = valueClass.getName();
+    }
+
+    public String getLockObject() {
+        return lock;
     }
 
     @Override
