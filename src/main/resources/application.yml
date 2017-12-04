@@ -19,7 +19,7 @@ bolts:
   kafka:
     "[bootstrap.servers]":      "localhost:9092"
     "[delete.enable.topic]":    "true"
-    #consumer
+    #kafkaConsumer
     "[group.id]":               "default-group"
     "[heartbeat.interval.ms]":  "59990"
     "[session.timeout.ms]":     "60000"

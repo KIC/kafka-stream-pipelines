@@ -94,7 +94,7 @@ public class KafkaBoltingService {
 
     private static void connectPipelet(BoltsState state) {
         System.out.println(state);
-        // create new kafka consumer, forward every event to the webservice, pass the webserice result to the target topic
+        // create new kafka kafkaConsumer, forward every event to the webservice, pass the webserice result to the target topic
         // what if the webservice is down? how can we retry?
         // if target is empty then this is basically a sink
         // what if we recreaed a new kafka without any history? what if the topic is missing? we would need to recreate topics and re-initialize all the states

@@ -22,8 +22,8 @@ public class KafkaServiceFactory {
     BoltsConfiguration configuration;
 
     /**
-     * The consumer is NOT thread-safe. See Multi-threaded Processing for more details.
-     * @return kafka consumer
+     * The kafkaConsumer is NOT thread-safe. See Multi-threaded Processing for more details.
+     * @return kafka kafkaConsumer
      */
     public KafkaConsumer<Long, String> createConsumer(String pipeline) {
         Properties props = (Properties) configuration.getKafka().clone();
@@ -32,10 +32,10 @@ public class KafkaServiceFactory {
     }
 
     /**
-     * The consumer is NOT thread-safe. See Multi-threaded Processing for more details.
+     * The kafkaConsumer is NOT thread-safe. See Multi-threaded Processing for more details.
      * @param topic topic to subscribe to
      * @param offset offet to start from
-     * @return kafka consumer
+     * @return kafka kafkaConsumer
      */
     public KafkaConsumer<Long, String> createConsumer(String pipeline, String topic, long offset) {
         KafkaConsumer<Long, String> consumer = createConsumer(pipeline);

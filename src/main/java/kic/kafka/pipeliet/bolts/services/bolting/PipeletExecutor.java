@@ -18,7 +18,7 @@ public class PipeletExecutor implements Callable<LambdaStatus> {
     private final Producer<Long, String> producer;
     private final Pipelet pipelet;
 
-    // FIXME dont pass kafka consumer and producer, instead pass labmdas so this class is testable
+    // FIXME dont pass kafka kafkaConsumer and producer, instead pass labmdas so this class is testable
     public PipeletExecutor(LambdaExecutor lambdaExecutor, Consumer<Long, String> kafaConsumer, Producer<Long, String> producer, Pipelet pipelet) {
         this.lambdaExecutor = lambdaExecutor;
         this.kafaConsumer = kafaConsumer;

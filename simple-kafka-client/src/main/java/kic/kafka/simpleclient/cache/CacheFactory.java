@@ -8,8 +8,6 @@ import kic.kafka.simpleclient.objectserialization.ObjectDeSerializer;
 import kic.kafka.simpleclient.objectserialization.ObjectSerializer;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.common.PartitionInfo;
-import org.apache.kafka.common.TopicPartition;
 
 import java.util.Arrays;
 import java.util.Properties;
@@ -26,7 +24,7 @@ public class CacheFactory {
                 .build(key -> makeProducer(key, properties));
     }
 
-    public static LoadingCache<ConsumerCacheKey, KafkaConsumer> newConsumerCache(Properties properties){
+    public static LoadingCache<ConsumerCacheKey, CachedConsumer> newConsumerCache(Properties properties){
         return Caffeine.newBuilder()
                 .maximumSize(10_000)
                 .expireAfterAccess(getExpirationSetting(properties), TimeUnit.MILLISECONDS)
@@ -35,7 +33,7 @@ public class CacheFactory {
     }
 
     private static long getExpirationSetting(Properties properties) {
-        // should be less then kafka setting of "heartbeat.interval.ms" so that we can close the consumer
+        // should be less then kafka setting of "heartbeat.interval.ms" so that we can close the kafkaConsumer
         return Math.max(Long.parseLong(properties.getOrDefault("heartbeat.interval.ms", "60000").toString()) - 1000L,
                         1000);
     }
@@ -56,7 +54,7 @@ public class CacheFactory {
         return producer;
     }
 
-    private static KafkaConsumer makeConsumer(ConsumerCacheKey cacheKey, Properties properties) {
+    private static CachedConsumer makeConsumer(ConsumerCacheKey cacheKey, Properties properties) {
         // we need to maintain the de-serializers via properties file
         // we also need a default serializer -> use byte-de-serializer -> de-serialize object from bytes
         // and we need a random group id
@@ -73,15 +71,15 @@ public class CacheFactory {
         consumer.subscribe(Arrays.asList(cacheKey.topic));
         consumer.poll(0);
 
-        return consumer;
+        return new CachedConsumer(consumer);
     }
 
     private static void closeKafkaProducer(ProducerCacheKey key, KafkaProducer producer, RemovalCause cause) {
         producer.close();
     }
 
-    private static void closeKafkaConsumer(ConsumerCacheKey key, KafkaConsumer consumer, RemovalCause cause) {
-        consumer.close();
+    private static void closeKafkaConsumer(ConsumerCacheKey key, CachedConsumer consumer, RemovalCause cause) {
+        consumer.kafkaConsumer.close();
     }
 
     private static String getKeySerializer(Properties properties, String className) {

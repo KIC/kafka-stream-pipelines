@@ -35,7 +35,7 @@ public class Polling {
 
     private LoadingCache<CacheKey, KafkaConsumer<Long, String>> consumers = Caffeine.newBuilder()
             .maximumSize(10_000)
-            .expireAfterAccess(59, TimeUnit.SECONDS) // should be less then kafka setting of "heartbeat.interval.ms" so that we can close the consumer
+            .expireAfterAccess(59, TimeUnit.SECONDS) // should be less then kafka setting of "heartbeat.interval.ms" so that we can close the kafkaConsumer
             .removalListener(Polling::closeConsumer)
             .build(key -> kafkaServiceFactory.createConsumer(key.pipeline, key.topic, 0)); // FIXME should not be foo!
 
@@ -69,10 +69,10 @@ public class Polling {
 
     private static void closeConsumer(CacheKey key, KafkaConsumer<Long, String> consumer, RemovalCause cause) {
         try {
-            log.info("close consumer: {}", key);
+            log.info("close kafkaConsumer: {}", key);
             consumer.close();
         } catch (Exception e) {
-            log.error("failed to close consumer", e);
+            log.error("failed to close kafkaConsumer", e);
         }
     }
 }

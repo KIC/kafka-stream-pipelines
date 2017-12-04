@@ -3,19 +3,19 @@ package kic.kafka.simpleclient.cache;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 
 public class CachedConsumer {
-    private final KafkaConsumer consumer;
-    private final long lastPulledOffset;
+    public final KafkaConsumer kafkaConsumer;
+    public final long lastPulledOffset;
 
-    public CachedConsumer(KafkaConsumer consumer) {
-        this(consumer, Long.MIN_VALUE);
+    public CachedConsumer(KafkaConsumer kafkaConsumer) {
+        this(kafkaConsumer, Long.MIN_VALUE);
     }
 
-    private CachedConsumer(KafkaConsumer consumer, long lastPulledOffset) {
-        this.consumer = consumer;
+    private CachedConsumer(KafkaConsumer kafkaConsumer, long lastPulledOffset) {
+        this.kafkaConsumer = kafkaConsumer;
         this.lastPulledOffset = lastPulledOffset;
     }
 
     public CachedConsumer withOffset(long offset) {
-        return new CachedConsumer(consumer, offset);
+        return new CachedConsumer(kafkaConsumer, offset);
     }
 }
