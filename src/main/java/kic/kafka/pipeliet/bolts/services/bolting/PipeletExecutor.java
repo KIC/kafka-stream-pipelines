@@ -1,4 +1,4 @@
-package kic.kafka.pipeliet.bolts.services.bolting;
+/*package kic.kafka.pipeliet.bolts.services.bolting;
 
 import kic.lambda.dispatch.LambdaExecutor;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -56,3 +56,4 @@ public class PipeletExecutor implements Callable<LambdaStatus> {
     }
 
 }
+*/

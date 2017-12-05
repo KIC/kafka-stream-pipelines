@@ -19,13 +19,15 @@ def adminClient = (KafkaAdminClient) AdminClient.create(props);
 def producer = new KafkaProducer<Long, String>(props);
 def dist = new NormalDistribution(0, 0.02)
 def topic = "test111"
+def count = 0
 
 def newTopics = adminClient.createTopics([new NewTopic(topic, 1, (short) 1)])
 println(newTopics)
 
-while(true) {
+while(args.length < 2 || args[1].toInteger() > count) {
     def sample = dist.sample()
     println(sample)
-    producer.send(new ProducerRecord<Long, String>(topic, System.currentTimeMillis(), "" + sample))
+    producer.send(new ProducerRecord<Long, String>(topic, System.currentTimeMillis(), "" + sample)).get()
     Thread.sleep(args.length > 0 ? args[0].toLong() : 100L)
+    count++
 }

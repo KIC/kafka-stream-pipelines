@@ -14,7 +14,10 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -23,12 +26,20 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
 import static java.util.stream.Collectors.toList;
 
 // This class should be a singleton per kafka cluster
 public class SimpleKafkaClient {
+    private static final Logger LOG = LoggerFactory.getLogger(SimpleKafkaClient.class);
     private static final int MAX_RETRIES = 3;
+    private final ExecutorService backgroundExecutor = Executors.newFixedThreadPool(1);
     private final Properties kafkaProperties;
     private final LoadingCache<ProducerCacheKey, KafkaProducer> producers;
     private final LoadingCache<ConsumerCacheKey, CachedConsumer> consumers;
@@ -45,18 +56,23 @@ public class SimpleKafkaClient {
         ProducerCacheKey cacheKey = new ProducerCacheKey(key.getClass(), value.getClass());
 
         try {
-            return (RecordMetadata) producers.get(cacheKey)
-                                             .send(new ProducerRecord(topic, key, value))
-                                             .get();
+            RecordMetadata rm = (RecordMetadata) producers.get(cacheKey)
+                                                          .send(new ProducerRecord(topic, key, value))
+                                                          .get();
+
+            if (LOG.isDebugEnabled()) LOG.debug("pushed: {}", rm);
+            return rm;
         } catch (InterruptedException | ExecutionException e) {
             // FIXME what should we do? e.printStackTrace();
+            LOG.error("", e);
             return null;
         }
     }
 
-    public <K, V>List<ConsumerRecord<K, V>> poll(String name, String topic, Class<K> keyClass, Class<V> valueClass, long offset, long timeOutInMs) {
+    public <K, V>Records<K, V> poll(String name, String topic, Class<K> keyClass, Class<V> valueClass, long offset, long timeOutInMs) {
         // Hide away the kafkaConsumer, we keep the consumers depending on a name + a topic in a caffeine cache
         ConsumerCacheKey cacheKey = new ConsumerCacheKey(name, topic, keyClass, valueClass);
+        long rebalanceTimeout = 10000L;
 
         // only one poll at a time for the same kafkaConsumer is allowed
         synchronized (cacheKey.getLockObject()) {
@@ -65,27 +81,44 @@ public class SimpleKafkaClient {
                     CachedConsumer cachedConsumer = consumers.get(cacheKey);
                     KafkaConsumer<K, V> consumer = (KafkaConsumer<K, V>) cachedConsumer.kafkaConsumer;
 
-                    // we should only need to seek if the current offset is different
-                    if (cachedConsumer.lastPulledOffset < offset - 1) seek(consumer, topic, offset);
+                    // we need an async background task because if a coumer is in the state of rebalancing
+                    // I have experienced some long waiting operation (longer then the poll timeout!)
+                    if (offset != cachedConsumer.lastPulledOffset + 1) seek(consumer, topic, offset);
+                    ConsumerRecords<K, V> consumedRecords = consumer.poll(timeOutInMs);
+                    /* TODO we can enable the following via configuration
+                    ConsumerRecords<K, V> consumedRecords = timeOutableOperation(() -> {
+                        // we should only need to seek if the current offset is different
+                        if (cachedConsumer.lastPulledOffset < offset - 1) seek(consumer, topic, offset);
+                        return consumer.poll(timeOutInMs);
+                    }, rebalanceTimeout);*/
+
+
+                    Records<K, V> recordsAndOffset = mapRecords(consumedRecords);
 
                     // and we remember the last offset
-                    RecordsWithLastOffset<K, V> recordsAndOffset = mapRecords(consumer.poll(timeOutInMs));
-                    consumers.put(cacheKey, cachedConsumer.withOffset(recordsAndOffset.lastOffset));
+                    if (!recordsAndOffset.isEmpty()) consumers.put(cacheKey, cachedConsumer.withOffset(recordsAndOffset.lastOffset));
 
-                    return recordsAndOffset.records;
-                } catch (IllegalStateException e) {
+                    return recordsAndOffset;
+                } catch (Exception e) {
+                    LOG.warn("poll failed - retry {}/{}\n{}", retry + 1, MAX_RETRIES, e);
                     consumers.invalidate(cacheKey);
                 }
             }
         }
 
         // if everyting fails return and emtpy list  - TODO decide how to handle excelptions
-        return new ArrayList<>();
+        throw new RuntimeException("poll failed");
+        //return new Records<>(new ArrayList<>(), Long.MIN_VALUE);
     }
 
     public void seek(KafkaConsumer<?, ?> consumer, String topic, long offset) {
-        consumer.partitionsFor(topic)
-                .forEach(partInfo -> consumer.seek(new TopicPartition(topic, partInfo.partition()), offset));
+        LOG.debug("'{}' seek {}", topic, offset);
+        consumer.seek(new TopicPartition(topic, 0), offset);
+
+        /* we only suport one partition at the moment
+        for (PartitionInfo partitionInfo : consumer.partitionsFor(topic)) {
+            consumer.seek(new TopicPartition(topic, partitionInfo.partition()), offset);
+        }*/
     }
 
     /**
@@ -104,11 +137,17 @@ public class SimpleKafkaClient {
                                    .get();
         } catch (InterruptedException | ExecutionException e) {
             // FIXME what should we do? e.printStackTrace();
+            LOG.error("", e);
             return new HashSet<>();
         }
     }
 
-    public void createTopic(int nrOfPartitions, int replicas, String... topics) {
+    public void createTopic(String... topic) {
+        createTopic(1, 1, topic);
+    }
+
+    // make this private as we currently only support one partition
+    private void createTopic(int nrOfPartitions, int replicas, String... topics) {
         List<NewTopic> newTopics = Arrays.stream(topics)
                                          .map(topic -> new NewTopic(topic, nrOfPartitions, (short) replicas))
                                          .collect(toList());
@@ -119,6 +158,7 @@ public class SimpleKafkaClient {
                             .get();
         } catch (InterruptedException | ExecutionException e) {
             // FIXME what should we do? e.printStackTrace();
+            LOG.error("", e);
         }
     }
 
@@ -132,12 +172,19 @@ public class SimpleKafkaClient {
         }
     }
 
-    private <K, V>RecordsWithLastOffset<K, V> mapRecords(ConsumerRecords<K, V> consumerRecords) {
+    private <K, V>Records<K, V> mapRecords(ConsumerRecords<K, V> consumerRecords) {
         List<ConsumerRecord<K, V>> records = new ArrayList<>(consumerRecords.count());
         Iterator<ConsumerRecord<K, V>> it = consumerRecords.iterator();
+        LOG.debug("polled rows: {}", consumerRecords.count());
+
         while (it.hasNext()) records.add(it.next());
-        long offset = records.size() > 0 ? records.get(records.size() - 1).offset() : Long.MIN_VALUE;
-        return new RecordsWithLastOffset<>(records, offset);
+        long offset = records.size() > 0 ? records.get(records.size() - 1).offset() : 0;
+
+        if (LOG.isDebugEnabled()) LOG.debug("polled rows: {}", records);
+        return new Records<>(records, offset);
     }
 
+    private <T>T timeOutableOperation(Callable<T> task, long timeoutInMs) throws InterruptedException, ExecutionException, TimeoutException {
+        return backgroundExecutor.submit(task).get(timeoutInMs, TimeUnit.MILLISECONDS);
+    }
 }

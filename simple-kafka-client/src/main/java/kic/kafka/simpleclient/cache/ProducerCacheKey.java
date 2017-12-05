@@ -5,8 +5,8 @@ public class ProducerCacheKey {
     public final String valueClass;
 
     public ProducerCacheKey(Class<?> keyClass, Class<?> valueClass) {
-        this.keyClass = keyClass.toString();
-        this.valueClass = valueClass.toString();
+        this.keyClass = keyClass.getName();
+        this.valueClass = valueClass.getName();
     }
 
     @Override

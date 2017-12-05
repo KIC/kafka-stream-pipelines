@@ -4,10 +4,14 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.github.benmanes.caffeine.cache.RemovalCause;
 import kic.kafka.simpleclient.PropertiesExtender;
+import kic.kafka.simpleclient.SimpleKafkaClient;
 import kic.kafka.simpleclient.objectserialization.ObjectDeSerializer;
 import kic.kafka.simpleclient.objectserialization.ObjectSerializer;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.common.TopicPartition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.Properties;
@@ -15,11 +19,12 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 public class CacheFactory {
+    private static final Logger LOG = LoggerFactory.getLogger(CacheFactory.class);
 
     public static LoadingCache<ProducerCacheKey, KafkaProducer> newProducerCache(Properties properties){
         return Caffeine.newBuilder()
                 .maximumSize(10_000)
-                .expireAfterAccess(getExpirationSetting(properties), TimeUnit.MILLISECONDS)
+                .expireAfterAccess(10, TimeUnit.MINUTES) // FIXME connections.max.idle.ms
                 .removalListener(CacheFactory::closeKafkaProducer)
                 .build(key -> makeProducer(key, properties));
     }
@@ -65,21 +70,28 @@ public class CacheFactory {
         KafkaConsumer consumer = new KafkaConsumer(new PropertiesExtender(properties)
                 .with("key.deserializer", keyDeSerializer)
                 .with("value.deserializer", valueDeSerializer)
+                .with("client.id", cacheKey.name)
                 .with("group.id", groupId)
                 .extend());
 
+        //consumer.assign(Arrays.asList(new TopicPartition(cacheKey.topic, 0)));
         consumer.subscribe(Arrays.asList(cacheKey.topic));
+        consumer.partitionsFor(cacheKey.topic);
         consumer.poll(0);
 
         return new CachedConsumer(consumer);
     }
 
     private static void closeKafkaProducer(ProducerCacheKey key, KafkaProducer producer, RemovalCause cause) {
+        LOG.info("evict producer: {} - {}", key, cause);
         producer.close();
     }
 
     private static void closeKafkaConsumer(ConsumerCacheKey key, CachedConsumer consumer, RemovalCause cause) {
-        consumer.kafkaConsumer.close();
+        if (cause != RemovalCause.REPLACED) {
+            LOG.info("evict consumer: {} - {}", key, cause);
+            consumer.kafkaConsumer.close();
+        }
     }
 
     private static String getKeySerializer(Properties properties, String className) {
@@ -101,4 +113,5 @@ public class CacheFactory {
     private static String randomUuidString() {
         return UUID.randomUUID().toString();
     }
+
 }

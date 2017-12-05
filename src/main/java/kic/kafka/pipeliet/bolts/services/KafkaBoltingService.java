@@ -27,26 +27,22 @@ public class KafkaBoltingService {
     private final ExecutorService process = Executors.newFixedThreadPool(1); // TODO use http://www.baeldung.com/spring-factorybean public class ToolFactory implements FactoryBean<Tool> {
     private final ExecutorService retry = Executors.newFixedThreadPool(1); // TODO use http://www.baeldung.com/spring-factorybean public class ToolFactory implements FactoryBean<Tool> {
     private final BoltsStateRepository repository;
-    private final KafkaServiceFactory kafkaServiceFactory;
-    private final KafkaProducer<Long, String> kafkaProducer;
-    private final KafkaAdminClient kafkaAdminClient;
+    private final KafkaClientService kafkaClient;
 
     @Autowired
-    public KafkaBoltingService(BoltsStateRepository repository, KafkaServiceFactory kafkaServiceFactory) {
+    public KafkaBoltingService(BoltsStateRepository repository, KafkaClientService kafkaClient) {
         this.repository = repository;
-        this.kafkaServiceFactory = kafkaServiceFactory;
-        this.kafkaProducer = kafkaServiceFactory.creareProducer();
-        this.kafkaAdminClient = kafkaServiceFactory.getAdminClient();
+        this.kafkaClient = kafkaClient;
     }
 
     public Set<String> fetchTopics() throws ExecutionException, InterruptedException {
-        return kafkaAdminClient.listTopics().names().get();
+        return kafkaClient.listTopics();
     }
 
     public void boltPipelet(String pipeline, String sourceTopic, String targetTopic, URL pipeletLambda) {
         // check for duplicate key
         // create the new target topic
-        kafkaServiceFactory.createTopic(targetTopic, 1, 1);
+        /*kafkaServiceFactory.createTopic(targetTopic, 1, 1);
 
         // create a new BoltState
 
@@ -82,13 +78,11 @@ public class KafkaBoltingService {
                     }
                 }
             }
-        }.start();
+        }.start();*/
     }
 
     public void resumePipeline() {
-        repository.findAll().forEach(KafkaBoltingService::connectPipelet);
-        System.out.println("factory: " + kafkaServiceFactory);
-        System.out.println("producer: " + kafkaProducer);
+        //repository.findAll().forEach(KafkaBoltingService::connectPipelet);
         System.out.println("done resume");
     }
 
@@ -102,5 +96,17 @@ public class KafkaBoltingService {
 
     }
 
+    public void createTestTopic() {
+        // Test if topic is readable
+        // C:\kafka_2.11-1.0.0\bin\windows\kafka-console-consumer.bat --bootstrap-server localhost:9092 --topic Bolting-Server-Test --from-beginning
+        String testTopic = "Bolting-Server-Test";
+        kafkaClient.createTopic(testTopic);
+
+        for (long i=0; i<5; i++) {
+            kafkaClient.send(testTopic, i, "hello server test " + i);
+        }
+
+        //kafkaClient.poll()
+    }
 
 }

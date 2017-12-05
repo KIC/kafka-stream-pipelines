@@ -43,4 +43,15 @@ public class ConsumerCacheKey {
         result = 31 * result + valueClass.hashCode();
         return result;
     }
+
+    @Override
+    public String toString() {
+        return "ConsumerCacheKey{" +
+                "lock='" + lock + '\'' +
+                ", name='" + name + '\'' +
+                ", topic='" + topic + '\'' +
+                ", keyClass='" + keyClass + '\'' +
+                ", valueClass='" + valueClass + '\'' +
+                '}';
+    }
 }

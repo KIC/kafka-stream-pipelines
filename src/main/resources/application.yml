@@ -1,4 +1,7 @@
 spring:
+  devtools:
+    restart:
+      enabled: false
   h2:
     console:
       enabled: true
@@ -21,15 +24,19 @@ bolts:
     "[delete.enable.topic]":    "true"
     #kafkaConsumer
     "[group.id]":               "default-group"
+    "[auto.offset.reset]":      "earliest"
     "[heartbeat.interval.ms]":  "59990"
+    "[fetch.max.wait.ms]":      "5000"
     "[session.timeout.ms]":     "60000"
     "[enable.auto.commit]":     "true"
-    "[key.deserializer]":       "org.apache.kafka.common.serialization.LongDeserializer"
-    "[value.deserializer]":     "org.apache.kafka.common.serialization.StringDeserializer"
+    "[key.deserializer.java.lang.Long]":     "org.apache.kafka.common.serialization.LongDeserializer"
+    "[value.deserializer.java.lang.String]": "org.apache.kafka.common.serialization.StringDeserializer"
+
     # producer
-    "[clinet.id]":              "default-client"
-    "[key.serializer]":         "org.apache.kafka.common.serialization.LongSerializer"
-    "[value.serializer]":       "org.apache.kafka.common.serialization.StringSerializer"
+    "[client.id]":              "default-client"
+    "[key.serializer.java.lang.Long]":     "org.apache.kafka.common.serialization.LongSerializer"
+    "[value.serializer.java.lang.String]": "org.apache.kafka.common.serialization.StringSerializer"
+
 logging:
   level:
     root: INFO

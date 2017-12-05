@@ -41,6 +41,7 @@ public class BoltsServer {
                 );
             }
 
+            boltingService.createTestTopic();
             boltingService.resumePipeline();
         };
     }
