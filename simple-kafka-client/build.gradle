@@ -11,7 +11,7 @@ repositories {
 
 dependencies {
     // Logging
-    compile 'ch.qos.logback:logback-classic:1.0.13'
+    compile 'org.slf4j:slf4j-api:1.7.25'
 
     // Kafka
     compile 'org.apache.kafka:kafka-clients:1.0.0'
@@ -24,4 +24,5 @@ dependencies {
 
     testCompile 'junit:junit:4.12'
     testCompile project(':embedded-kafka')
+    testCompile 'ch.qos.logback:logback-classic:1.2.3'
 }

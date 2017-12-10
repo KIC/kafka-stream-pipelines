@@ -1,6 +1,6 @@
 ## Bolting Pipelets
 Basically we have a Kafa cluser wehre we can substribe to a specific topic
-forward the event to a rest api and sent the rest result to a target topic.
+pushForward the event to a rest api and sent the rest result to a target topic.
 such kind of stateless functions are also called serverless functions or 
 thanks to amazon _labdas_.  
 
