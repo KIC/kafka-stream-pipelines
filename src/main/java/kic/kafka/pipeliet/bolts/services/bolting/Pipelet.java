@@ -4,6 +4,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 
 // we should add the offset as well and then this would be basically an entity ...
+@Deprecated
 public class Pipelet {
     private final String sourceTopic;
     private final String targetTopic;

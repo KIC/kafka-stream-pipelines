@@ -3,7 +3,6 @@ package kic.kafka.pipeliet.bolts.configuration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
-import java.util.HashMap;
 import java.util.Properties;
 
 @Configuration
@@ -49,6 +48,7 @@ public class BoltsConfiguration {
     }
     private final EmbeddedKafka embeddedKafka = new EmbeddedKafka();
     private Properties kafka;
+    private long pollTimeout = 333L;
 
     public EmbeddedKafka getEmbeddedKafka() {
         return embeddedKafka;
@@ -62,11 +62,20 @@ public class BoltsConfiguration {
         this.kafka = kafka;
     }
 
+    public long getPollTimeout() {
+        return pollTimeout;
+    }
+
+    public void setPollTimeout(long pollTimeout) {
+        this.pollTimeout = pollTimeout;
+    }
+
     @Override
     public String toString() {
         return "BoltsConfiguration{" +
                 "embeddedKafka=" + embeddedKafka +
                 ", kafka=" + kafka +
+                ", pollTimeout=" + pollTimeout +
                 '}';
     }
 }

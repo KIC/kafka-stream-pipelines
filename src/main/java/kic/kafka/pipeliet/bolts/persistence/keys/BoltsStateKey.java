@@ -13,15 +13,15 @@ public class BoltsStateKey implements Serializable {
     @Column(nullable = false)
     String outboundTopic;
     @Column(nullable = false)
-    String restEndpoint;
+    String service;
 
     protected BoltsStateKey() {
     }
 
-    public BoltsStateKey(String inboundTopic, String outboundTopic, String restEndpoint) {
+    public BoltsStateKey(String inboundTopic, String outboundTopic, String service) {
         this.inboundTopic = inboundTopic;
         this.outboundTopic = outboundTopic;
-        this.restEndpoint = restEndpoint;
+        this.service = service;
     }
 
     public String getInboundTopic() {
@@ -40,12 +40,12 @@ public class BoltsStateKey implements Serializable {
         this.outboundTopic = outboundTopic;
     }
 
-    public URL getRestEndpoint() throws MalformedURLException {
-        return new URL(restEndpoint);
+    public URL getService() throws MalformedURLException {
+        return new URL(service);
     }
 
-    public void setRestEndpoint(String restEndpoint) {
-        this.restEndpoint = restEndpoint;
+    public void setService(String service) {
+        this.service = service;
     }
 
     @Override
@@ -53,7 +53,7 @@ public class BoltsStateKey implements Serializable {
         return "BoltsStateKey{" +
                 "inboundTopic='" + inboundTopic + '\'' +
                 ", outboundTopic='" + outboundTopic + '\'' +
-                ", restEndpoint=" + restEndpoint +
+                ", service=" + service +
                 '}';
     }
 }

@@ -2,15 +2,8 @@ package kic.kafka.pipeliet.bolts.services;
 
 import kic.kafka.pipeliet.bolts.persistence.entities.BoltsState;
 import kic.kafka.pipeliet.bolts.persistence.repositories.BoltsStateRepository;
-import org.apache.kafka.clients.admin.KafkaAdminClient;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.ProducerRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 import java.net.URL;
 import java.util.Set;
@@ -19,6 +12,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 @Service
+@Deprecated
 public class KafkaBoltingService {
     // this is th class where the magic should happen
     // we should have a threadpool here and subscribe to topics and

@@ -11,13 +11,13 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class LambdaTaskExecutor implements Callable<Void> {
-    private final LambdaTask<BoltsState, ConsumerRecord<?, ?>> lambdaTask;
-    private final Function<Long, List<ConsumerRecord<?, ?>>> eventSource;
-    private final Consumer<Map.Entry<?, byte[]>> eventTarget;
+    private final LambdaTask<BoltsState, ConsumerRecord> lambdaTask;
+    private final Function<Long, List<ConsumerRecord>> eventSource;
+    private final Consumer<Map.Entry<Object, byte[]>> eventTarget;
 
-    public LambdaTaskExecutor(LambdaTask<BoltsState, ConsumerRecord<?, ?>> lambdaTask,
-                              Function<Long, List<ConsumerRecord<?, ?>>> eventSource,
-                              Consumer<Map.Entry<?, byte[]>> eventTarget
+    public LambdaTaskExecutor(LambdaTask<BoltsState, ConsumerRecord> lambdaTask,
+                              Function<Long, List<ConsumerRecord>> eventSource,
+                              Consumer<Map.Entry<Object, byte[]>> eventTarget
     ) {
         this.lambdaTask = lambdaTask;
         this.eventSource = eventSource;
@@ -26,8 +26,8 @@ public class LambdaTaskExecutor implements Callable<Void> {
 
     @Override
     public Void call() throws Exception {
-        List<ConsumerRecord<?, ?>> events = eventSource.apply(lambdaTask.getCurrentState()
-                                                                        .getConsumerOffset());
+        List<ConsumerRecord> events = eventSource.apply(lambdaTask.getCurrentState()
+                                                                  .getConsumerOffset());
 
         for (ConsumerRecord<?, ?> event : events) {
             // if in one cycle someting goes wrong then we can safly throw an excption.

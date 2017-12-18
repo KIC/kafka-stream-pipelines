@@ -37,6 +37,13 @@ public class BoltsState {
         this.state = state;
     }
 
+
+    public BoltsState withNewState(byte[] newState, long offset) {
+        setState(newState);
+        setConsumerOffset(offset);
+        return this;
+    }
+
     @Override
     public String toString() {
         return "BoltsState{" +

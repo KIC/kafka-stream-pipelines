@@ -74,7 +74,7 @@ class RestExecutor {
 }
 
 
-class RestException extends Exception {
+class RestException extends RuntimeException {
     public final int httpStatusCode
 
     RestException(int httpStatusCode, String var1, Throwable exception) {

@@ -23,7 +23,7 @@ class RestLambda implements BiFunction<String, Object, String> {
     }
 
     @Override
-    String apply(String currentState, Object event) throws RestException {
+    String apply(String currentState, Object event) {
         RestExecutor executor = new RestExecutor([event: event, state: currentState])
         return executor.executeTemplate(httpMethod, urlTemplate, payloadTemplate, payloadContentType).toString()
     }

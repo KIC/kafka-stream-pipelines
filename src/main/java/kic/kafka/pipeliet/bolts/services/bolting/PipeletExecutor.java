@@ -10,7 +10,7 @@ import java.util.Arrays;
 import java.util.concurrent.Callable;
 
 import static groovyx.net.http.Method.GET;
-
+@Deprecated
 public class PipeletExecutor implements Callable<LambdaStatus> {
     private static final long IMMEDIATLY_RETURN = 0;
     private final LambdaExecutor lambdaExecutor;
