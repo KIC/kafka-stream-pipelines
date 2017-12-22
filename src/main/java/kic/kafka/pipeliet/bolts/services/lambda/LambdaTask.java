@@ -18,11 +18,19 @@ public class LambdaTask<S, E> {
                       BiFunction<S, E, S> lambda,
                       Consumer<S> stateUpdate
     ) {
+        this(initialStateProvider, null, lambda, stateUpdate);
+    }
+
+    public LambdaTask(Supplier<S> initialStateProvider,
+                      S defaultState,
+                      BiFunction<S, E, S> lambda,
+                      Consumer<S> stateUpdate
+    ) {
         this.lambda = lambda;
         this.stateUpdate = stateUpdate;
 
         // use the initial state provider to read the sate from the data source (i.e. base)
-        this.state = initialStateProvider.get();
+        this.state = coalesce(initialStateProvider.get(), defaultState);
     }
 
     public S execute(E event) throws LambdaException {
@@ -44,4 +52,11 @@ public class LambdaTask<S, E> {
         return state;
     }
 
+    private <T>T coalesce(T... args) {
+        for (T arg : args) {
+            if (arg != null) return arg;
+        }
+
+        return null;
+    }
 }

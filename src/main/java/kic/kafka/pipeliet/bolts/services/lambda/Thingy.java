@@ -122,7 +122,7 @@ public class Thingy extends Thread {
         final BoltsStateKey id = new BoltsStateKey(sourceTopic, targetTopic, serviceId); // FIXME is url needed for unique key?
 
         // FIXME / TODO persist this whole stuff into a database, on duplicate key throw exception (later update topic versions and reset offsets)
-        LambdaTask<BoltsState, ConsumerRecord> task = new LambdaTask(() -> stateLoader.apply(id), lambda, stateUpdater);
+        LambdaTask<BoltsState, ConsumerRecord> task = new LambdaTask(() -> stateLoader.apply(id), new BoltsState(), lambda, stateUpdater);
         Function<Long, List<ConsumerRecord>> pullForTopic = newTopicConsumer.apply(pipelineId, sourceTopic);
         Consumer<Map.Entry<Object, byte[]>> pushToTopic = newTopicProvider.apply(targetTopic);
         LambdaTaskExecutor lte = new LambdaTaskExecutor(task, pullForTopic, pushToTopic);
@@ -134,6 +134,7 @@ public class Thingy extends Thread {
     @Override
     public void start() {
         // inject this into the main commandline runner and start the service
+        // todo we also want to resume everything where we left
         log.info("starting lambda executor service");
         running = true;
         super.start();
@@ -151,9 +152,11 @@ public class Thingy extends Thread {
             try {
                 LambdaTaskExecutor task;
                 while ((task = taskQueue.poll()) != null) {
+                    log.debug("executing task: {}", task);
                     excutorService.submit(makeExecutor(task));
                 }
 
+                log.debug("task queue empty ... ");
                 Thread.sleep(100L);
             } catch (Exception e) {
                 shutdown();
@@ -164,12 +167,15 @@ public class Thingy extends Thread {
 
     private Runnable makeExecutor(final LambdaTaskExecutor task) {
         return () -> {
+            if (log.isDebugEnabled()) log.debug("execute tast {}", task);
             try {
                 task.call();
+                if (log.isDebugEnabled()) log.debug("task {} execution success, put back into queue", task);
                 taskQueue.add(task);
             } catch (Exception e) {
                 // whatever it is we need to retry the whole lot
                 // FIXME what if just the sending went wrong?
+                log.warn("task execution failed, put it into the retry queue", e);
                 retryQueue.add(task);
             }
         };

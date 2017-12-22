@@ -5,6 +5,7 @@ import kic.kafka.pipeliet.bolts.services.lambda.Thingy;
 import kic.lambda.dispatch.RestLambda;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -20,16 +21,17 @@ public class Bolting {
 
     // how do we remove pipelets
     // how to we reset pipelets? probabla we need versioned topics? deleting topics is not too easy
-
+    // curl -X POST "http://localhost:8080/bolt/demoPipeline?sourceTopic=test-111&targetTopic=test-222" -d "http://localhost:8080/demo/fold?key=${event.key}&value=${event.value}"
     @Autowired
     private Thingy boltingService;
 
-    @RequestMapping(path = "/{pipelineName}", method = RequestMethod.PUT)
+    @RequestMapping(path = "/{pipelineName}", method = RequestMethod.POST)
     private Map boltPipelet(
             @PathVariable String pipelineName,
             @RequestParam(defaultValue = "") String sourceTopic,
             @RequestParam(defaultValue = "") String targetTopic,
-            @RequestParam(defaultValue = "") String lambdaUrl
+            @RequestParam(defaultValue = "GET") String method,
+            @RequestBody() String lambdaUrl
     ) throws MalformedURLException {
         // TODO create filter/validator
         if (sourceTopic.isEmpty()) throw new IllegalArgumentException("source topic can not be empty!");
