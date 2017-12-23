@@ -9,9 +9,9 @@ import groovyx.net.http.Method
 import org.apache.http.util.EntityUtils
 
 import java.util.function.Function
-import static groovyx.net.http.ContentType.*
-import static java.net.URLEncoder.*
-import static groovyx.net.http.Method.*
+
+import static groovyx.net.http.ContentType.BINARY
+import static groovyx.net.http.ContentType.JSON
 
 @Slf4j
 class RestExecutor {
@@ -29,8 +29,9 @@ class RestExecutor {
     }
 
     RestResponse executeTemplate(Method method, String url, String payload = "", ContentType contentType = JSON) {
+        if (log.isDebugEnabled()) log.debug("{} url {} : {}", method, url, bindings)
         def lambdaUrl = templateEngine.createTemplate(url)
-                                      .make(bindings.collectEntries { entry -> [(entry.key) : (urlEncode && entry.value != null ? encode(entry.value.toString()) : entry.value)] })
+                                      .make(bindings)
                                       .toString()
                                       .toURL()
 

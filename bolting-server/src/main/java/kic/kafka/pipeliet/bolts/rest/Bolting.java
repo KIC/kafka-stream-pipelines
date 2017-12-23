@@ -21,7 +21,7 @@ public class Bolting {
 
     // how do we remove pipelets
     // how to we reset pipelets? probabla we need versioned topics? deleting topics is not too easy
-    // curl -X POST "http://localhost:8080/bolt/demoPipeline?sourceTopic=test-111&targetTopic=test-222" -d "http://localhost:8080/demo/fold?key=${event.key}&value=${event.value}"
+
     @Autowired
     private Thingy boltingService;
 

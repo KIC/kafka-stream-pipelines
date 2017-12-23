@@ -11,7 +11,13 @@ public class BoltsState {
     @EmbeddedId
     private BoltsStateKey id;
     private long consumerOffset;
-    private byte[] state;
+    private byte[] state = new byte[0];
+
+    protected BoltsState() { }
+
+    public BoltsState(BoltsStateKey id) {
+        this.id = id;
+    }
 
     public BoltsStateKey getId() {
         return id;
@@ -69,7 +75,7 @@ public class BoltsState {
         return "BoltsState{" +
                 "id=" + id +
                 ", consumerOffset=" + consumerOffset +
-                ", state=" + Arrays.toString(state) +
+                ", state=" + new String(state) +
                 '}';
     }
 }

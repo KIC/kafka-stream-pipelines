@@ -122,7 +122,7 @@ public class Thingy extends Thread {
         final BoltsStateKey id = new BoltsStateKey(sourceTopic, targetTopic, serviceId); // FIXME is url needed for unique key?
 
         // FIXME / TODO persist this whole stuff into a database, on duplicate key throw exception (later update topic versions and reset offsets)
-        LambdaTask<BoltsState, ConsumerRecord> task = new LambdaTask(() -> stateLoader.apply(id), new BoltsState(), lambda, stateUpdater);
+        LambdaTask<BoltsState, ConsumerRecord> task = new LambdaTask(() -> stateLoader.apply(id), new BoltsState(id), lambda, stateUpdater);
         Function<Long, List<ConsumerRecord>> pullForTopic = newTopicConsumer.apply(pipelineId, sourceTopic);
         Consumer<Map.Entry<Object, byte[]>> pushToTopic = newTopicProvider.apply(targetTopic);
         LambdaTaskExecutor lte = new LambdaTaskExecutor(task, pullForTopic, pushToTopic);
@@ -148,15 +148,17 @@ public class Thingy extends Thread {
 
     @Override
     public void run() {
+        boolean wasAlwaysEmpty = true;
         while (running) {
             try {
                 LambdaTaskExecutor task;
                 while ((task = taskQueue.poll()) != null) {
+                    wasAlwaysEmpty = false;
                     log.debug("executing task: {}", task);
                     excutorService.submit(makeExecutor(task));
                 }
 
-                log.debug("task queue empty ... ");
+                if (wasAlwaysEmpty) log.debug("task queue empty ... ");
                 Thread.sleep(100L);
             } catch (Exception e) {
                 shutdown();
@@ -175,6 +177,7 @@ public class Thingy extends Thread {
             } catch (Exception e) {
                 // whatever it is we need to retry the whole lot
                 // FIXME what if just the sending went wrong?
+                // FIXME provide error reason to the task
                 log.warn("task execution failed, put it into the retry queue", e);
                 retryQueue.add(task);
             }

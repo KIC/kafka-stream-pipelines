@@ -1,6 +1,9 @@
 package kic.kafka.pipeliet.bolts.demo;
 
 import kic.kafka.pipeliet.bolts.services.KafkaClientService;
+import kic.kafka.pipeliet.bolts.services.lambda.RestLambdaWrapper;
+import kic.kafka.pipeliet.bolts.services.lambda.Thingy;
+import kic.lambda.dispatch.RestLambda;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
@@ -24,17 +27,30 @@ public class DemoServer {
     }
 
     @Bean
-    public CommandLineRunner schedulingRunner(KafkaClientService kafkaClient, TaskExecutor executor) {
+    public CommandLineRunner schedulingRunner(KafkaClientService kafkaClient, TaskExecutor executor, Thingy thingy) {
+        final RestLambdaWrapper lambdaWrapper = new RestLambdaWrapper(new RestLambda("http://localhost:8080/demo/fold?key=${event.key}&value=${event.value}&state=${state}"));
+        final String demoPipeline = "demo-pipeline";
+        final String demoService = "demo-fold-service";
         final String demoSourceTopic = "demo-111";
+        final String demoFoldTopic = "demo-fold-111";
 
         return (String... args) -> {
-            log.info("starting demo pipeline");
+            log.info("starting {}", demoPipeline);
+
             // create a new demo topic
             kafkaClient.createTopic(demoSourceTopic);
+
             // push some random data to the topic
             executor.execute(new RandomNumberGenerator((key, value) -> kafkaClient.send(demoSourceTopic, key, value)));
+
             // consume from the topic to prove its working
-            executor.execute(new DemoTopicReader(offset -> kafkaClient.poll("demo", demoSourceTopic, Long.class, Double.class, offset, 1000L)));
+            executor.execute(new DemoTopicReader("source", offset -> kafkaClient.poll(demoPipeline, demoSourceTopic, Long.class, Double.class, offset, 1000L)));
+
+            // bolt a demo service to the source
+            thingy.add(demoPipeline, demoService, demoSourceTopic, demoFoldTopic, lambdaWrapper);
+
+            // consume from the new topic to prove its working
+            executor.execute(new DemoTopicReader(demoFoldTopic, offset -> kafkaClient.poll(demoPipeline, demoFoldTopic, Long.class, Double.class, offset, 1000L)));
         };
     }
 }
