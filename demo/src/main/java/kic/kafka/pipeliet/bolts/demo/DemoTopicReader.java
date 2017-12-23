@@ -19,8 +19,10 @@ public class DemoTopicReader implements Runnable {
         long offset = 0;
         while (true) {
             Records<Long, Double> records = topicPoller.apply(offset);
-            records.entries.forEach(cr -> log.info("polled: {}, {} @ {}", cr.key(), cr.value(), cr.offset()));
-            offset = records.lastOffset + 1;
+            if (!records.isEmpty()) {
+                records.entries.forEach(cr -> log.info("polled: {}, {} @ {}", cr.key(), cr.value(), cr.offset()));
+                offset = records.lastOffset + 1;
+            }
         }
     }
 }

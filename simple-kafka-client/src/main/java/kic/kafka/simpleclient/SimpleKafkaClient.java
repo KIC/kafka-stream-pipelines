@@ -60,7 +60,7 @@ public class SimpleKafkaClient {
                                                           .send(new ProducerRecord(topic, key, value))
                                                           .get();
 
-            if (LOG.isDebugEnabled()) LOG.debug("pushed: {}", rm);
+            if (LOG.isDebugEnabled()) LOG.debug("pushed: {} {}", key, rm);
             return rm;
         } catch (InterruptedException | ExecutionException e) {
             // FIXME what should we do? e.printStackTrace();
