@@ -14,7 +14,7 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
-import org.apache.kafka.common.PartitionInfo;
+import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -126,8 +126,25 @@ public class SimpleKafkaClient {
      * @return kafka admin client
      */
     public synchronized KafkaAdminClient getAdminClient() {
-        if (adminClient == null) adminClient = (KafkaAdminClient) AdminClient.create(kafkaProperties);
+        if (adminClient == null) adminClient = createClient(0);
         return adminClient;
+    }
+
+    private KafkaAdminClient createClient(int tried) {
+        try {
+            return (KafkaAdminClient) AdminClient.create(kafkaProperties);
+        } catch (KafkaException e) {
+            if (tried < Integer.parseInt(kafkaProperties.getProperty("max.connection.retry", "10"))) {
+                try {
+                    Thread.sleep(1000L);
+                    return createClient(tried++);
+                } catch (InterruptedException e1) {
+                    throw e;
+                }
+            } else {
+                throw e;
+            }
+        }
     }
 
     public Set<String> listTopics() {

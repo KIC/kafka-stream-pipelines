@@ -21,6 +21,9 @@ bolts:
     zookeper-port: 2181
     kafka-port: 9092
   kafka:
+    #kafak simple client
+    "[max.connection.retry]":   "100"
+    #kafka client
     "[bootstrap.servers]":      "localhost:9092"
     "[delete.enable.topic]":    "true"
     #kafkaConsumer
