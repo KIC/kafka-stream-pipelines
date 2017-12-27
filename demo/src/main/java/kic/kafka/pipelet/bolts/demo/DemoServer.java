@@ -41,16 +41,16 @@ public class DemoServer {
             kafkaClient.createTopic(demoSourceTopic);
 
             // push some random data to the topic
-            executor.execute(new RandomNumberGenerator((key, value) -> kafkaClient.send(demoSourceTopic, key, value)));
+            executor.execute(new RandomNumberGenerator((key, value) -> kafkaClient.push(demoSourceTopic, key, value)));
 
             // consume from the topic to prove its working
-            executor.execute(new DemoTopicReader("source", offset -> kafkaClient.poll(demoPipeline, demoSourceTopic, Long.class, Double.class, offset, 1000L)));
+            executor.execute(new DemoTopicReader("source", offset -> kafkaClient.pull(demoPipeline, demoSourceTopic, offset, 1000L)));
 
             // bolt a demo service to the source
             boltingService.add(demoPipeline, demoService, demoSourceTopic, demoFoldTopic, lambdaWrapper);
 
             // consume from the new topic to prove its working
-            executor.execute(new DemoTopicReader(demoFoldTopic, offset -> kafkaClient.poll(demoPipeline, demoFoldTopic, Long.class, Double.class, offset, 1000L)));
+            executor.execute(new DemoTopicReader(demoFoldTopic, offset -> kafkaClient.pull(demoPipeline, demoFoldTopic, offset, 1000L)));
         };
     }
 }

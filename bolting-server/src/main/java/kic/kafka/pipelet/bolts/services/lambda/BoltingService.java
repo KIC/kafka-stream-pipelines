@@ -2,8 +2,8 @@ package kic.kafka.pipelet.bolts.services.lambda;
 
 import kic.kafka.pipelet.bolts.persistence.entities.BoltsState;
 import kic.kafka.pipelet.bolts.persistence.keys.BoltsStateKey;
-import kic.kafka.pipelet.bolts.services.KafkaClientService;
 import kic.kafka.pipelet.bolts.persistence.repositories.BoltsStateRepository;
+import kic.kafka.pipelet.bolts.services.KafkaClientService;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,9 +11,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -73,8 +75,9 @@ public class BoltingService extends Thread {
     private static final long SLEEP_FOR_NEW_TASKS = 1000L;
     private final Queue<Task> taskQueue = new ConcurrentLinkedQueue<>();
     private final Queue<Task> retryQueue = new PriorityBlockingQueue<>();
+    private final Set<Task> knownTasks = new HashSet<>();
     private final BiFunction<String, String, Function<Long, List<ConsumerRecord>>> newTopicConsumer;
-    private final Function<String, Consumer<Map.Entry<Object, byte[]>>> newTopicProvider;
+    private final Function<String, Consumer<Map.Entry<String, String>>> newTopicProvider;
     private final Function<BoltsStateKey, BoltsState> stateLoader;
     private final Consumer<BoltsState> stateUpdater;
     private final ExecutorService excutorService;
@@ -100,7 +103,7 @@ public class BoltingService extends Thread {
     }
 
     public BoltingService(BiFunction<String, String, Function<Long, List<ConsumerRecord>>> newTopicConsumer,
-                          Function<String, Consumer<Map.Entry<Object, byte[]>>> newTopicProvider,
+                          Function<String, Consumer<Map.Entry<String, String>>> newTopicProvider,
                           Function<BoltsStateKey, BoltsState> stateLoader,
                           Consumer<BoltsState> stateUpdater,
                           ExecutorService executorService
@@ -121,12 +124,16 @@ public class BoltingService extends Thread {
      */
     public void add(String pipelineId, String serviceId, String sourceTopic, String targetTopic, BiFunction<BoltsState, ConsumerRecord, BoltsState> lambda) {
         final BoltsStateKey id = new BoltsStateKey(sourceTopic, targetTopic, serviceId); // FIXME is url needed for unique key?
+        final String taskId = pipelineId + "/" + serviceId + "/" + sourceTopic + " -> " + targetTopic;
 
         // FIXME / TODO persist this whole stuff into a database, on duplicate key throw exception (later update topic versions and reset offsets)
-        LambdaTask<BoltsState, ConsumerRecord> task = new LambdaTask(() -> stateLoader.apply(id), new BoltsState(id), lambda, stateUpdater);
+        Lambda<BoltsState, ConsumerRecord> task = new Lambda(() -> stateLoader.apply(id), new BoltsState(id), lambda, stateUpdater);
         Function<Long, List<ConsumerRecord>> pullForTopic = newTopicConsumer.apply(pipelineId, sourceTopic);
-        Consumer<Map.Entry<Object, byte[]>> pushToTopic = newTopicProvider.apply(targetTopic);
-        LambdaTaskExecutor lte = new LambdaTaskExecutor(task, pullForTopic, pushToTopic);
+        Consumer<Map.Entry<String, String>> pushToTopic = newTopicProvider.apply(targetTopic);
+        LambdaTask lte = new LambdaTask(taskId, task, pullForTopic, pushToTopic);
+
+        // remember task
+        knownTasks.add(lte);
 
         // finally put lambda task executor into the task queue
         taskQueue.add(lte);
@@ -178,15 +185,14 @@ public class BoltingService extends Thread {
                 // FIXME provide error reason to the task
                 LOG.warn("task execution failed, put it into the retry queue", e);
                 retryQueue.add(task);
+            } finally {
+
             }
         };
     }
 
-    public List<Task> getActiveTasks() {
-        return new ArrayList<>(taskQueue);
+    public List<Task> getTasks() {
+        return new ArrayList<>(knownTasks);
     }
 
-    public List<Task> getFailingTasks() {
-        return new ArrayList<>(retryQueue);
-    }
 }

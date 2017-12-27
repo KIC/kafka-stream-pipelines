@@ -11,7 +11,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 
 @RestController
-@RequestMapping("/proxy")
+@RequestMapping("/api/v1/proxy")
 public class Proxy {
     private static final String AUTH = "bbc8c017-064f-495f-906d-78720b50d7e6";
 

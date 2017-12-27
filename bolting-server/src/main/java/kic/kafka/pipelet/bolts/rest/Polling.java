@@ -12,28 +12,31 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.UUID;
+
 import static org.springframework.web.bind.annotation.RequestMethod.GET;
 
 @RestController
 @RequestMapping("/api/v1/poll")
 public class Polling {
-    private static final Logger log = LoggerFactory.getLogger(Polling.class);
+    private static final Logger LOG = LoggerFactory.getLogger(Polling.class);
+    private static final String SALT = UUID.randomUUID().toString();
 
     @Autowired
     private KafkaClientService client;
 
-    @RequestMapping(path = "/{pipelineName}/{topic}", method = GET)
+    @RequestMapping(path = "/{pipelineName}/{topic}", method = GET, produces = "application/json")
     private PollResult poll(
             @PathVariable String pipelineName,
             @PathVariable String topic,
-            @RequestParam(defaultValue = "500") long timeout,
+            @RequestParam(defaultValue = "1000") long timeout,
             @RequestParam(defaultValue = "0") long offset
     ) {
         try {
-            Records<Long, String> records = client.poll(pipelineName, topic, Long.class, String.class, offset, timeout);
-            return new PollResult(records.lastOffset, records.keys(), records.values());
+            Records<String, String> records = client.pull(SALT + pipelineName, topic, offset, timeout);
+            return new PollResult(records.offsets(), records.keys(), records.values());
         } catch (Exception e) {
-            log.error("Polling exception", e);
+            LOG.error("Polling exception", e);
             return new PollResult(ExceptionUtils.getStackTrace(e));
         }
     }

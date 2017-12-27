@@ -1,62 +1,87 @@
 package kic.kafka.pipelet.bolts.services.lambda;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import kic.kafka.pipelet.bolts.persistence.entities.BoltsState;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 
-import java.util.function.BiFunction;
+import java.util.AbstractMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
+import java.util.function.Function;
 
+public class LambdaTask implements Task {
+    private final String taskId;
+    private final Lambda<BoltsState, ConsumerRecord> lambda;
+    private final Function<Long, List<ConsumerRecord>> eventSource;
+    private final Consumer<Map.Entry<String, String>> eventTarget;
+    private Exception lastException = null;
+    private String lastKey = null;
+    private String lastValue = null;
+    private int executionCount = 0;
+    private boolean executing = false;
 
-public class LambdaTask<S, E> {
-    private static final Logger log = LoggerFactory.getLogger(LambdaTask.class);
-    private final BiFunction<S, E, S> lambda;
-    private final Consumer<S> stateUpdate;
-    private S state;
-
-    public LambdaTask(Supplier<S> initialStateProvider,
-                      BiFunction<S, E, S> lambda,
-                      Consumer<S> stateUpdate
+    public LambdaTask(String taskId,
+                      Lambda<BoltsState, ConsumerRecord> lambda,
+                      Function<Long, List<ConsumerRecord>> eventSource,
+                      Consumer<Map.Entry<String, String>> eventTarget
     ) {
-        this(initialStateProvider, null, lambda, stateUpdate);
-    }
-
-    public LambdaTask(Supplier<S> initialStateProvider,
-                      S defaultState,
-                      BiFunction<S, E, S> lambda,
-                      Consumer<S> stateUpdate
-    ) {
+        this.taskId = taskId;
         this.lambda = lambda;
-        this.stateUpdate = stateUpdate;
-
-        // use the initial state provider to read the sate from the data source (i.e. base)
-        this.state = coalesce(initialStateProvider.get(), defaultState);
+        this.eventSource = eventSource;
+        this.eventTarget = eventTarget;
     }
 
-    public S execute(E event) throws LambdaException {
+    @Override
+    public Void call() throws Exception {
         try {
-            // apply the event on the current state
-            final S newState = lambda.apply(state, event);
+            executing = true;
+            List<ConsumerRecord> events = eventSource.apply(lambda.getCurrentState()
+                                                                  .getConsumerOffset());
 
-            // store the new state in the database
-            stateUpdate.accept(newState);
+            for (ConsumerRecord<?, ?> event : events) {
+                // if in one cycle someting goes wrong then we can safly throw an excption.
+                // the lambdatask takes care on the state update and the caller of this callable
+                // takes care of the retry mechanism
+                BoltsState newState = lambda.execute(event);
+                lastKey = "" + event.key();
+                lastValue = newState.stateAsString();
+                eventTarget.accept(new AbstractMap.SimpleImmutableEntry<>(lastKey, lastValue));
+            }
 
-            // fianlly update the internal state
-            return this.state = newState;
+            lastException = null;
+            return null;
         } catch (Exception e) {
-            throw new LambdaException(e);
+            lastException = e;
+            throw e;
+        } finally {
+            executing = false;
+            executionCount++;
         }
     }
 
-    public S getCurrentState() {
-        return state;
+    @Override
+    public String getTaskId() {
+        return taskId;
     }
 
-    private <T>T coalesce(T... args) {
-        for (T arg : args) {
-            if (arg != null) return arg;
-        }
-
-        return null;
+    @Override
+    public Exception getExcpetion() {
+        return lastException;
     }
+
+    @Override
+    public String getLastResult() {
+        return lastKey + ":" + lastValue;
+    }
+
+    @Override
+    public int getExecutionCount() {
+        return executionCount;
+    }
+
+    @Override
+    public boolean isExecuting() {
+        return executing;
+    }
+
 }

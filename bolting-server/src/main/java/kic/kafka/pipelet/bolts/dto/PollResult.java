@@ -4,14 +4,14 @@ import java.util.List;
 
 public class PollResult {
     private final boolean success;
-    private long offset = -1L;
+    private List<Long> offsets;
     private List keys = null;
     private List values = null;
     private String error;
 
-    public PollResult(long offset, List keys, List values) {
-        if (keys.size() != values.size()) throw new IllegalArgumentException("keys and values not of same size");
-        this.offset = offset;
+    public PollResult(List<Long> offsets, List keys, List values) {
+        if (keys.size() != values.size() && keys.size() == offsets.size()) throw new IllegalArgumentException("keys and values not of same size");
+        this.offsets = offsets;
         this.keys = keys;
         this.values = values;
         this.success = true;
@@ -26,36 +26,20 @@ public class PollResult {
         return success;
     }
 
-    public long getOffset() {
-        return offset;
-    }
-
-    public void setOffset(long offset) {
-        this.offset = offset;
+    public List<Long> getOffsets() {
+        return offsets;
     }
 
     public List getKeys() {
         return keys;
     }
 
-    public void setKeys(List keys) {
-        this.keys = keys;
-    }
-
     public List getValues() {
         return values;
     }
 
-    public void setValues(List values) {
-        this.values = values;
-    }
-
     public String getError() {
         return error;
-    }
-
-    public void setError(String error) {
-        this.error = error;
     }
 
 }

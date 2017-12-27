@@ -20,6 +20,10 @@ public class Records<K, V> {
         return entries.iterator();
     }
 
+    public List<Long> offsets() {
+        return entries.stream().map(cr -> cr.offset()).collect(toList());
+    }
+
     public List<K> keys() {
         return entries.stream().map(cr -> cr.key()).collect(toList());
     }

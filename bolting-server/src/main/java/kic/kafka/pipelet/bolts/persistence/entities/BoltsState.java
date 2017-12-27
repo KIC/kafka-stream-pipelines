@@ -4,10 +4,13 @@ import kic.kafka.pipelet.bolts.persistence.keys.BoltsStateKey;
 
 import javax.persistence.EmbeddedId;
 import javax.persistence.Entity;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 
 @Entity
 public class BoltsState {
+    private static final Charset CHAR_SET = Charset.forName("UTF-8");
+
     @EmbeddedId
     private BoltsStateKey id;
     private long consumerOffset;
@@ -43,6 +46,10 @@ public class BoltsState {
         this.state = state;
     }
 
+
+    public String stateAsString() {
+        return new String(state, CHAR_SET);
+    }
 
     public BoltsState withNewState(byte[] newState, long offset) {
         setState(newState);

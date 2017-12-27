@@ -17,7 +17,7 @@ public class RandomNumberGenerator implements Runnable {
         while (true) {
             try {
                 callback.accept(System.currentTimeMillis(), distribution.sample());
-                Thread.sleep(2000L);
+                Thread.sleep(5000L);
             } catch (InterruptedException e) {
                 return;
             }

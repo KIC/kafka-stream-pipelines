@@ -1,5 +1,6 @@
 package kic.kafka.pipelet.bolts.rest;
 
+import groovyx.net.http.Method;
 import kic.kafka.pipelet.bolts.services.lambda.BoltingService;
 import kic.kafka.pipelet.bolts.services.lambda.RestLambdaWrapper;
 import kic.lambda.dispatch.RestLambda;
@@ -16,7 +17,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/bolt")
+@RequestMapping("/api/v1/bolt")
 public class Bolting {
 
     // how do we remove pipelets
@@ -38,7 +39,7 @@ public class Bolting {
         if (lambdaUrl.isEmpty()) throw new IllegalArgumentException("url can not be empty!");
 
         final String serviceId = "foo-service.id"; // FIXME serviceID ??
-        final RestLambdaWrapper lambdaWrapper = new RestLambdaWrapper(new RestLambda(lambdaUrl));
+        final RestLambdaWrapper lambdaWrapper = new RestLambdaWrapper(new RestLambda(lambdaUrl, Method.valueOf(method)));
 
         boltingService.add(pipelineName,
                            serviceId,

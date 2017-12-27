@@ -19,6 +19,7 @@ import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOError;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -60,12 +61,10 @@ public class SimpleKafkaClient {
                                                           .send(new ProducerRecord(topic, key, value))
                                                           .get();
 
-            if (LOG.isDebugEnabled()) LOG.debug("pushed: {} {}", key, rm);
+            if (LOG.isDebugEnabled()) LOG.debug("pushed: {}:{} / {}", key, value, rm);
             return rm;
         } catch (InterruptedException | ExecutionException e) {
-            // FIXME what should we do? e.printStackTrace();
-            LOG.error("", e);
-            return null;
+            throw new IOError(e);
         }
     }
 
@@ -106,9 +105,8 @@ public class SimpleKafkaClient {
             }
         }
 
-        // if everyting fails return and emtpy list  - TODO decide how to handle excelptions
-        throw new RuntimeException("poll failed");
-        //return new Records<>(new ArrayList<>(), Long.MIN_VALUE);
+        // if everyting fails return and emtpy list
+        return new Records<>(new ArrayList<>(), -1);
     }
 
     public void seek(KafkaConsumer<?, ?> consumer, String topic, long offset) {
