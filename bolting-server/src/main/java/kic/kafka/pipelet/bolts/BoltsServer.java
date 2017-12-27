@@ -2,8 +2,7 @@ package kic.kafka.pipeliet.bolts;
 
 import kic.kafka.embedded.EmbeddedKafaJavaWrapper$;
 import kic.kafka.pipeliet.bolts.configuration.BoltsConfiguration;
-import kic.kafka.pipeliet.bolts.services.KafkaBoltingService;
-import kic.kafka.pipeliet.bolts.services.lambda.Thingy;
+import kic.kafka.pipeliet.bolts.services.lambda.BoltingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,14 +21,14 @@ public class BoltsServer {
     private BoltsConfiguration configuration;
 
     @Autowired
-    private Thingy thingy;
+    private BoltingService boltingService;
 
     public static void main(String[] args) {
         SpringApplication.run(BoltsServer.class, args);
     }
 
     @Bean
-    public CommandLineRunner runKafkaPipeletsBoltsServer(KafkaBoltingService boltingService) {
+    public CommandLineRunner runKafkaPipeletsBoltsServer() {
         return (String... args) -> {
             log.info("using configuration: {}", configuration);
 
@@ -45,9 +44,7 @@ public class BoltsServer {
                 );
             }
 
-            boltingService.createTestTopic(); // FIXME move this to demo module
-            //boltingService.resumePipeline();
-            thingy.start();
+            this.boltingService.start();
         };
     }
 
@@ -58,6 +55,6 @@ public class BoltsServer {
             EmbeddedKafaJavaWrapper$.MODULE$.stop();
         }
 
-        thingy.shutdown();
+        boltingService.shutdown();
     }
 }

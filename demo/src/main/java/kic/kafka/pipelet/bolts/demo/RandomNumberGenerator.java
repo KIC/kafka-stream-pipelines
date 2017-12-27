@@ -1,4 +1,4 @@
-package kic.kafka.pipeliet.bolts.demo;
+package kic.kafka.pipelet.bolts.demo;
 
 import org.apache.commons.math3.distribution.NormalDistribution;
 

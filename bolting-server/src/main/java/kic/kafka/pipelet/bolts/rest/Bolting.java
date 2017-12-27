@@ -1,7 +1,7 @@
 package kic.kafka.pipeliet.bolts.rest;
 
 import kic.kafka.pipeliet.bolts.services.lambda.RestLambdaWrapper;
-import kic.kafka.pipeliet.bolts.services.lambda.Thingy;
+import kic.kafka.pipeliet.bolts.services.lambda.BoltingService;
 import kic.lambda.dispatch.RestLambda;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -23,7 +23,7 @@ public class Bolting {
     // how to we reset pipelets? probabla we need versioned topics? deleting topics is not too easy
 
     @Autowired
-    private Thingy boltingService;
+    private BoltingService boltingService;
 
     @RequestMapping(path = "/{pipelineName}", method = RequestMethod.POST)
     private Map boltPipelet(

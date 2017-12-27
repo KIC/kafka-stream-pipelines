@@ -13,11 +13,11 @@ import java.util.function.BiFunction
 import java.util.function.Consumer
 import java.util.function.Function
 
-class ThingyTest extends Specification {
+class BoltingServiceTest extends Specification {
     static sources = [source1:[new ConsumerRecord("source1", 0, 0, 0, 1), new ConsumerRecord("source1", 0, 0, 1, 2)]]
     static targets = [target1:[]]
     static states = [:]
-    static Thingy thingyService = new Thingy({ pipelineId, topic -> { offset -> offset < sources[topic].size() ? [sources[topic][offset as int]] : [] } as Function },
+    static BoltingService thingyService = new BoltingService({ pipelineId, topic -> { offset -> offset < sources[topic].size() ? [sources[topic][offset as int]] : [] } as Function },
                                              { topic -> { newState -> targets[topic] << newState } as Consumer },
                                              { key -> states[key] ?: new BoltsState(id: key) },
                                              { state -> states[state.id] = state },

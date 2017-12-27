@@ -1,4 +1,4 @@
-package kic.kafka.pipeliet.bolts.demo;
+package kic.kafka.pipelet.bolts.demo;
 
 
 import org.slf4j.Logger;

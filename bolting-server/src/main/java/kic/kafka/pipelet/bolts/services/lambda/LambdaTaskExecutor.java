@@ -6,11 +6,10 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import java.util.AbstractMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-public class LambdaTaskExecutor implements Callable<Void> {
+public class LambdaTaskExecutor implements Task {
     private final LambdaTask<BoltsState, ConsumerRecord> lambdaTask;
     private final Function<Long, List<ConsumerRecord>> eventSource;
     private final Consumer<Map.Entry<Object, byte[]>> eventTarget;

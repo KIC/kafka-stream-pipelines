@@ -10,10 +10,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -68,10 +68,11 @@ import java.util.function.Function;
  *        add this task back to the retry queue yet with a lower priority
  */
 @Service
-public class Thingy extends Thread {
-    private static final Logger log = LoggerFactory.getLogger(Thingy.class);
-    private final Queue<LambdaTaskExecutor> taskQueue = new ConcurrentLinkedQueue<>();
-    private final Queue<Callable> retryQueue = new PriorityBlockingQueue<>();
+public class BoltingService extends Thread {
+    private static final Logger LOG = LoggerFactory.getLogger(BoltingService.class);
+    private static final long SLEEP_FOR_NEW_TASKS = 1000L;
+    private final Queue<Task> taskQueue = new ConcurrentLinkedQueue<>();
+    private final Queue<Task> retryQueue = new PriorityBlockingQueue<>();
     private final BiFunction<String, String, Function<Long, List<ConsumerRecord>>> newTopicConsumer;
     private final Function<String, Consumer<Map.Entry<Object, byte[]>>> newTopicProvider;
     private final Function<BoltsStateKey, BoltsState> stateLoader;
@@ -90,7 +91,7 @@ public class Thingy extends Thread {
      */
 
     @Autowired
-    public Thingy(KafkaClientService kafkaClientService, BoltsStateRepository repository) {
+    public BoltingService(KafkaClientService kafkaClientService, BoltsStateRepository repository) {
         this(kafkaClientService::newTopicConsumer,
              kafkaClientService::newTopicProvider,
              repository::findOne,
@@ -98,11 +99,11 @@ public class Thingy extends Thread {
              Executors.newFixedThreadPool(1));
     }
 
-    public Thingy(BiFunction<String, String, Function<Long, List<ConsumerRecord>>> newTopicConsumer,
-                  Function<String, Consumer<Map.Entry<Object, byte[]>>> newTopicProvider,
-                  Function<BoltsStateKey, BoltsState> stateLoader,
-                  Consumer<BoltsState> stateUpdater,
-                  ExecutorService executorService
+    public BoltingService(BiFunction<String, String, Function<Long, List<ConsumerRecord>>> newTopicConsumer,
+                          Function<String, Consumer<Map.Entry<Object, byte[]>>> newTopicProvider,
+                          Function<BoltsStateKey, BoltsState> stateLoader,
+                          Consumer<BoltsState> stateUpdater,
+                          ExecutorService executorService
     ) {
         this.newTopicConsumer = newTopicConsumer;
         this.newTopicProvider = newTopicProvider;
@@ -135,31 +136,28 @@ public class Thingy extends Thread {
     public void start() {
         // inject this into the main commandline runner and start the service
         // todo we also want to resume everything where we left
-        log.info("starting lambda executor service");
+        LOG.info("starting lambda executor service");
         running = true;
         super.start();
     }
 
     public void shutdown() {
         // inject this into the main commandline runner as shutdown hook and stop the service from there
-        log.warn("stopping lambda executor service");
+        LOG.warn("stopping lambda executor service");
         running = false;
     }
 
     @Override
     public void run() {
-        boolean wasAlwaysEmpty = true;
         while (running) {
             try {
-                LambdaTaskExecutor task;
+                Task task;
                 while ((task = taskQueue.poll()) != null) {
-                    wasAlwaysEmpty = false;
-                    log.debug("executing task: {}", task);
+                    LOG.debug("executing task: {}", task);
                     excutorService.submit(makeExecutor(task));
                 }
 
-                if (wasAlwaysEmpty) log.debug("task queue empty ... ");
-                Thread.sleep(100L);
+                Thread.sleep(SLEEP_FOR_NEW_TASKS);
             } catch (Exception e) {
                 shutdown();
                 throw new RuntimeException(e);
@@ -167,20 +165,28 @@ public class Thingy extends Thread {
         }
     }
 
-    private Runnable makeExecutor(final LambdaTaskExecutor task) {
+    private Runnable makeExecutor(final Task task) {
         return () -> {
-            if (log.isDebugEnabled()) log.debug("execute tast {}", task);
+            if (LOG.isDebugEnabled()) LOG.debug("execute tast {}", task);
             try {
                 task.call();
-                if (log.isDebugEnabled()) log.debug("task {} execution success, put back into queue", task);
+                if (LOG.isDebugEnabled()) LOG.debug("task {} execution success, put back into queue", task);
                 taskQueue.add(task);
             } catch (Exception e) {
                 // whatever it is we need to retry the whole lot
                 // FIXME what if just the sending went wrong?
                 // FIXME provide error reason to the task
-                log.warn("task execution failed, put it into the retry queue", e);
+                LOG.warn("task execution failed, put it into the retry queue", e);
                 retryQueue.add(task);
             }
         };
+    }
+
+    public List<Task> getActiveTasks() {
+        return new ArrayList<>(taskQueue);
+    }
+
+    public List<Task> getFailingTasks() {
+        return new ArrayList<>(retryQueue);
     }
 }
