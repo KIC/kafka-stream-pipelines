@@ -1,4 +1,4 @@
-package kic.kafka.pipeliet.bolts.persistence.keys;
+package kic.kafka.pipelet.bolts.persistence.keys;
 
 import javax.persistence.Column;
 import javax.persistence.Embeddable;

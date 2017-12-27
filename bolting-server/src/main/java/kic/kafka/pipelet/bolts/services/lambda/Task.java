@@ -1,4 +1,4 @@
-package kic.kafka.pipeliet.bolts.services.lambda;
+package kic.kafka.pipelet.bolts.services.lambda;
 
 import java.util.concurrent.Callable;
 

@@ -1,6 +1,6 @@
-package kic.kafka.pipeliet.bolts.services;
+package kic.kafka.pipelet.bolts.services;
 
-import kic.kafka.pipeliet.bolts.configuration.BoltsConfiguration;
+import kic.kafka.pipelet.bolts.configuration.BoltsConfiguration;
 import kic.kafka.simpleclient.SimpleKafkaClient;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.beans.factory.annotation.Autowired;

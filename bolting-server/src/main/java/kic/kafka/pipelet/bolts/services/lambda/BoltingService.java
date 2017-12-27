@@ -1,9 +1,9 @@
-package kic.kafka.pipeliet.bolts.services.lambda;
+package kic.kafka.pipelet.bolts.services.lambda;
 
-import kic.kafka.pipeliet.bolts.persistence.entities.BoltsState;
-import kic.kafka.pipeliet.bolts.persistence.keys.BoltsStateKey;
-import kic.kafka.pipeliet.bolts.persistence.repositories.BoltsStateRepository;
-import kic.kafka.pipeliet.bolts.services.KafkaClientService;
+import kic.kafka.pipelet.bolts.persistence.entities.BoltsState;
+import kic.kafka.pipelet.bolts.persistence.keys.BoltsStateKey;
+import kic.kafka.pipelet.bolts.services.KafkaClientService;
+import kic.kafka.pipelet.bolts.persistence.repositories.BoltsStateRepository;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -15,12 +15,12 @@ class LambdaExecutorServiceTest extends Specification {
 
     def "Execute"() {
         given:
-        def lambdaExector = new RestExecutor(new URL(lambda + path))
+        def lambdaExector = new RestExecutor()
         def result = null
 
         when:
         try {
-            result = lambdaExector.execute(lambdaMethod)
+            result = lambdaExector.execute(lambdaMethod, new URL(lambda + path))
         } catch (RestException le) {
             result = le.httpStatusCode
         }

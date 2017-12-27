@@ -1,6 +1,6 @@
-package kic.kafka.pipeliet.bolts.dto;
+package kic.kafka.pipelet.bolts.dto;
 
-import kic.kafka.pipeliet.bolts.services.lambda.Task;
+import kic.kafka.pipelet.bolts.services.lambda.Task;
 
 public class TaskDescription {
 

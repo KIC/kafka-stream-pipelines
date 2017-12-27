@@ -1,7 +1,7 @@
-package kic.kafka.pipeliet.bolts.rest;
+package kic.kafka.pipelet.bolts.rest;
 
-import kic.kafka.pipeliet.bolts.services.lambda.RestLambdaWrapper;
-import kic.kafka.pipeliet.bolts.services.lambda.BoltingService;
+import kic.kafka.pipelet.bolts.services.lambda.BoltingService;
+import kic.kafka.pipelet.bolts.services.lambda.RestLambdaWrapper;
 import kic.lambda.dispatch.RestLambda;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PathVariable;

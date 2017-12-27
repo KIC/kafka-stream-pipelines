@@ -1,6 +1,6 @@
-package kic.kafka.pipeliet.bolts.services.lambda;
+package kic.kafka.pipelet.bolts.services.lambda;
 
-import kic.kafka.pipeliet.bolts.persistence.entities.BoltsState;
+import kic.kafka.pipelet.bolts.persistence.entities.BoltsState;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import java.util.AbstractMap;

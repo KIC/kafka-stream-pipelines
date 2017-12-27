@@ -1,4 +1,4 @@
-package kic.kafka.pipeliet.bolts.dto;
+package kic.kafka.pipelet.bolts.dto;
 
 import java.util.List;
 

@@ -1,8 +1,8 @@
-package kic.kafka.pipeliet.bolts.rest;
+package kic.kafka.pipelet.bolts.rest;
 
-import kic.kafka.pipeliet.bolts.dto.TaskDescription;
-import kic.kafka.pipeliet.bolts.services.lambda.BoltingService;
-import kic.kafka.pipeliet.bolts.services.lambda.Task;
+import kic.kafka.pipelet.bolts.dto.TaskDescription;
+import kic.kafka.pipelet.bolts.services.lambda.BoltingService;
+import kic.kafka.pipelet.bolts.services.lambda.Task;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;

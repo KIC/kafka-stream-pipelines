@@ -1,4 +1,4 @@
-package kic.kafka.pipeliet.bolts.services.lambda;
+package kic.kafka.pipelet.bolts.services.lambda;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

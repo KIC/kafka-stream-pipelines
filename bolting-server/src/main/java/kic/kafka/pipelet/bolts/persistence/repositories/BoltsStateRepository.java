@@ -1,7 +1,7 @@
-package kic.kafka.pipeliet.bolts.persistence.repositories;
+package kic.kafka.pipelet.bolts.persistence.repositories;
 
-import kic.kafka.pipeliet.bolts.persistence.entities.BoltsState;
-import kic.kafka.pipeliet.bolts.persistence.keys.BoltsStateKey;
+import kic.kafka.pipelet.bolts.persistence.entities.BoltsState;
+import kic.kafka.pipelet.bolts.persistence.keys.BoltsStateKey;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 

@@ -1,7 +1,7 @@
-package kic.kafka.pipeliet.bolts.rest;
+package kic.kafka.pipelet.bolts.rest;
 
-import kic.kafka.pipeliet.bolts.dto.PollResult;
-import kic.kafka.pipeliet.bolts.services.KafkaClientService;
+import kic.kafka.pipelet.bolts.dto.PollResult;
+import kic.kafka.pipelet.bolts.services.KafkaClientService;
 import kic.kafka.simpleclient.Records;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.slf4j.Logger;

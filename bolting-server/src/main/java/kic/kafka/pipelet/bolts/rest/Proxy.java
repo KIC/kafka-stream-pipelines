@@ -1,4 +1,4 @@
-package kic.kafka.pipeliet.bolts.rest;
+package kic.kafka.pipelet.bolts.rest;
 
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;

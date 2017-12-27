@@ -1,4 +1,4 @@
-package kic.kafka.pipeliet.bolts.services.bolting
+package kic.kafka.pipelet.bolts.services.bolting
 
 import org.apache.kafka.clients.consumer.MockConsumer
 import org.apache.kafka.clients.consumer.OffsetResetStrategy

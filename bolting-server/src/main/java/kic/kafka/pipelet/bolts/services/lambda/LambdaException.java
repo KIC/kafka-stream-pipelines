@@ -1,4 +1,4 @@
-package kic.kafka.pipeliet.bolts.services.lambda;
+package kic.kafka.pipelet.bolts.services.lambda;
 
 public class LambdaException extends Exception {
     public LambdaException(Throwable cause) {

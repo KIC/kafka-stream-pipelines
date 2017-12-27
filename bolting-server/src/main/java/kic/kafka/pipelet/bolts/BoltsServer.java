@@ -1,8 +1,8 @@
-package kic.kafka.pipeliet.bolts;
+package kic.kafka.pipelet.bolts;
 
 import kic.kafka.embedded.EmbeddedKafaJavaWrapper$;
-import kic.kafka.pipeliet.bolts.configuration.BoltsConfiguration;
-import kic.kafka.pipeliet.bolts.services.lambda.BoltingService;
+import kic.kafka.pipelet.bolts.configuration.BoltsConfiguration;
+import kic.kafka.pipelet.bolts.services.lambda.BoltingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

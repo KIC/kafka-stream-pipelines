@@ -1,6 +1,6 @@
-package kic.kafka.pipeliet.bolts.persistence.entities;
+package kic.kafka.pipelet.bolts.persistence.entities;
 
-import kic.kafka.pipeliet.bolts.persistence.keys.BoltsStateKey;
+import kic.kafka.pipelet.bolts.persistence.keys.BoltsStateKey;
 
 import javax.persistence.EmbeddedId;
 import javax.persistence.Entity;
