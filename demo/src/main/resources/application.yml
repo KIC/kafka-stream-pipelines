@@ -50,4 +50,4 @@ logging:
         kafka:
           clients:
             NetworkClient: ERROR
-
+      springframework: WARN

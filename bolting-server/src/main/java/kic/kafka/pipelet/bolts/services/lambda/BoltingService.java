@@ -124,11 +124,11 @@ public class BoltingService extends Thread {
      */
     public void add(String pipelineId, String serviceId, String sourceTopic, String targetTopic, BiFunction<BoltsState, ConsumerRecord, BoltsState> lambda) {
         final BoltsStateKey id = new BoltsStateKey(sourceTopic, targetTopic, serviceId); // FIXME is url needed for unique key?
-        final String taskId = pipelineId + "/" + serviceId + "/" + sourceTopic + " -> " + targetTopic;
+        final String taskId = pipelineId + "/" + serviceId + ":" + sourceTopic + "->" + targetTopic;
 
         // FIXME / TODO persist this whole stuff into a database, on duplicate key throw exception (later update topic versions and reset offsets)
         Lambda<BoltsState, ConsumerRecord> task = new Lambda(() -> stateLoader.apply(id), new BoltsState(id), lambda, stateUpdater);
-        Function<Long, List<ConsumerRecord>> pullForTopic = newTopicConsumer.apply(pipelineId, sourceTopic);
+        Function<Long, List<ConsumerRecord>> pullForTopic = newTopicConsumer.apply(taskId, sourceTopic);
         Consumer<Map.Entry<String, String>> pushToTopic = newTopicProvider.apply(targetTopic);
         LambdaTask lte = new LambdaTask(taskId, task, pullForTopic, pushToTopic);
 

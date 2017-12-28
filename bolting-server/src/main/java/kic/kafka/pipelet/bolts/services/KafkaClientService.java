@@ -24,7 +24,7 @@ public class KafkaClientService extends SimpleKafkaClient {
     }
 
     public Function<Long, List<ConsumerRecord>> newTopicConsumer(final String name, final String topic) {
-        return (offset) -> (List) poll(name, topic, String.class, String.class, offset, configuration.getPollTimeout()).entries;
+        return (offset) -> (List) pull(name, topic, offset, configuration.getPollTimeout()).entries;
     }
 
     public Consumer<Map.Entry<String, String>> newTopicProvider(final String topic) {
