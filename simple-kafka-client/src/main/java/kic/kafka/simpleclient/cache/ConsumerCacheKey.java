@@ -5,6 +5,7 @@ import java.util.UUID;
 public class ConsumerCacheKey {
     private static final String NAME_SPANCE = "%" + UUID.randomUUID().toString();
     private final String lock;
+    public final String thread;
     public final String name;
     public final String topic;
     public final String keyClass;
@@ -12,6 +13,7 @@ public class ConsumerCacheKey {
 
     public <K, V> ConsumerCacheKey(String name, String topic, Class<K> keyClass, Class<V> valueClass) {
         this.lock = (NAME_SPANCE + "|" + name + "|" + topic).intern();
+        this.thread = Thread.currentThread().getName(); // Kafka Consumers are NOT threadsafe!
         this.name = name;
         this.topic = topic;
         this.keyClass = keyClass.getName();
@@ -31,6 +33,7 @@ public class ConsumerCacheKey {
 
         if (!name.equals(that.name)) return false;
         if (!topic.equals(that.topic)) return false;
+        if (!thread.equals(that.thread)) return false;
         if (!keyClass.equals(that.keyClass)) return false;
         return valueClass.equals(that.valueClass);
     }
@@ -39,6 +42,7 @@ public class ConsumerCacheKey {
     public int hashCode() {
         int result = name.hashCode();
         result = 31 * result + topic.hashCode();
+        result = 31 * result + thread.hashCode();
         result = 31 * result + keyClass.hashCode();
         result = 31 * result + valueClass.hashCode();
         return result;
@@ -52,6 +56,7 @@ public class ConsumerCacheKey {
                 ", topic='" + topic + '\'' +
                 ", keyClass='" + keyClass + '\'' +
                 ", valueClass='" + valueClass + '\'' +
+                ", thread='" + thread + '\'' +
                 '}';
     }
 }

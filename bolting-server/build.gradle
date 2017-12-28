@@ -25,6 +25,9 @@ dependencies {
     compile 'org.springframework.boot:spring-boot-devtools'
     compile 'org.springframework.boot:spring-boot-starter-data-rest'
 
+    // Cache
+    compile 'com.github.ben-manes.caffeine:caffeine:2.6.0'
+
     // functional collections
     compile 'io.vavr:vavr:0.9.2'
 

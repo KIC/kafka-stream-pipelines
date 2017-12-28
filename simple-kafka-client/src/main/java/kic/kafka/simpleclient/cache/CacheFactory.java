@@ -4,12 +4,10 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.github.benmanes.caffeine.cache.RemovalCause;
 import kic.kafka.simpleclient.PropertiesExtender;
-import kic.kafka.simpleclient.SimpleKafkaClient;
 import kic.kafka.simpleclient.objectserialization.ObjectDeSerializer;
 import kic.kafka.simpleclient.objectserialization.ObjectSerializer;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,18 +21,18 @@ public class CacheFactory {
 
     public static LoadingCache<ProducerCacheKey, KafkaProducer> newProducerCache(Properties properties){
         return Caffeine.newBuilder()
-                .maximumSize(10_000)
-                .expireAfterAccess(10, TimeUnit.MINUTES) // FIXME connections.max.idle.ms
-                .removalListener(CacheFactory::closeKafkaProducer)
-                .build(key -> makeProducer(key, properties));
+                       .maximumSize(10_000)
+                       .expireAfterAccess(10, TimeUnit.MINUTES) // FIXME connections.max.idle.ms
+                       .removalListener(CacheFactory::closeKafkaProducer)
+                       .build(key -> makeProducer(key, properties));
     }
 
     public static LoadingCache<ConsumerCacheKey, CachedConsumer> newConsumerCache(Properties properties){
         return Caffeine.newBuilder()
-                .maximumSize(10_000)
-                .expireAfterAccess(getExpirationSetting(properties), TimeUnit.MILLISECONDS)
-                .removalListener(CacheFactory::closeKafkaConsumer)
-                .build(key -> makeConsumer(key, properties));
+                       .maximumSize(10_000)
+                       .expireAfterAccess(getExpirationSetting(properties), TimeUnit.MILLISECONDS)
+                       .removalListener(CacheFactory::closeKafkaConsumer)
+                       .build(key -> makeConsumer(key, properties));
     }
 
     private static long getExpirationSetting(Properties properties) {
@@ -50,11 +48,10 @@ public class CacheFactory {
         String clientId = randomUuidString();
 
         // we also need a default serializer -> serialize object to bytes -> use byte-de-serializer
-        KafkaProducer producer = new KafkaProducer(new PropertiesExtender(properties)
-                .with("key.serializer", keySerializer)
-                .with("value.serializer", valueSerializer)
-                .with("client.id", clientId)
-                .extend());
+        KafkaProducer producer = new KafkaProducer(new PropertiesExtender(properties).with("key.serializer", keySerializer)
+                                                                                     .with("value.serializer", valueSerializer)
+                                                                                     .with("client.id", clientId)
+                                                                                     .extend());
 
         return producer;
     }
@@ -67,12 +64,11 @@ public class CacheFactory {
         String valueDeSerializer = getValueDeserializer(properties, cacheKey.valueClass);
         String groupId = randomUuidString();
 
-        KafkaConsumer consumer = new KafkaConsumer(new PropertiesExtender(properties)
-                .with("key.deserializer", keyDeSerializer)
-                .with("value.deserializer", valueDeSerializer)
-                .with("client.id", cacheKey.name)
-                .with("group.id", groupId)
-                .extend());
+        KafkaConsumer consumer = new KafkaConsumer(new PropertiesExtender(properties).with("key.deserializer", keyDeSerializer)
+                                                                                     .with("value.deserializer", valueDeSerializer)
+                                                                                     .with("client.id", cacheKey.name)
+                                                                                     .with("group.id", groupId)
+                                                                                     .extend());
 
         //consumer.assign(Arrays.asList(new TopicPartition(cacheKey.topic, 0)));
         consumer.subscribe(Arrays.asList(cacheKey.topic));
@@ -95,23 +91,28 @@ public class CacheFactory {
     }
 
     private static String getKeySerializer(Properties properties, String className) {
-        return properties.getOrDefault("key.serializer." + className, ObjectSerializer.class.getName()).toString();
+        return properties.getOrDefault("key.serializer." + className, ObjectSerializer.class.getName())
+                         .toString();
     }
 
     private static String getValueSerializer(Properties properties, String className) {
-        return properties.getOrDefault("value.serializer." + className, ObjectSerializer.class.getName()).toString();
+        return properties.getOrDefault("value.serializer." + className, ObjectSerializer.class.getName())
+                         .toString();
     }
 
     private static String getKeyDeserializer(Properties properties, String className) {
-        return properties.getOrDefault("key.deserializer." + className, ObjectDeSerializer.class.getName()).toString();
+        return properties.getOrDefault("key.deserializer." + className, ObjectDeSerializer.class.getName())
+                         .toString();
     }
 
     private static String getValueDeserializer(Properties properties, String className) {
-        return properties.getOrDefault("value.deserializer." + className, ObjectDeSerializer.class.getName()).toString();
+        return properties.getOrDefault("value.deserializer." + className, ObjectDeSerializer.class.getName())
+                         .toString();
     }
 
     private static String randomUuidString() {
-        return UUID.randomUUID().toString();
+        return UUID.randomUUID()
+                   .toString();
     }
 
 }

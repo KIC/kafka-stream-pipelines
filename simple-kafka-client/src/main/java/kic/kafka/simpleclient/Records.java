@@ -2,6 +2,7 @@ package kic.kafka.simpleclient;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
@@ -39,4 +40,5 @@ public class Records<K, V> {
     public boolean isEmpty() {
         return entries.isEmpty();
     }
+
 }
