@@ -18,7 +18,7 @@ class LambdaExecutorTest extends Specification {
         def eventMaker = {offset, key, value -> new ConsumerRecord("aTopic", 0, offset, "$key", "$value")}
         def eventSource = {offset -> [1:0, 2:1, 3:2, 4:3].collect {k, v -> eventMaker(v, k, v)}}
         def eventTarget = {newState -> result << new String(newState.value)}
-        def executor = new LambdaTask("test", aLambdaTask, eventSource, eventTarget)
+        def executor = new LambdaTask("test", aLambdaTask, eventSource, eventTarget, {Task t -> }, {Task t -> })
 
         when:
         executor.call()

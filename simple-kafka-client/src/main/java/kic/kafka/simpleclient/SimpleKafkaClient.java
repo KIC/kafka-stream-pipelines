@@ -16,6 +16,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.TopicExistsException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -171,6 +172,8 @@ public class SimpleKafkaClient {
             getAdminClient().createTopics(newTopics)
                             .all()
                             .get();
+        } catch (TopicExistsException existsException) {
+            LOG.warn("Topic already exists");
         } catch (InterruptedException | ExecutionException e) {
             // FIXME what should we do? e.printStackTrace();
             LOG.error("", e);

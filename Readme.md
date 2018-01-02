@@ -17,28 +17,8 @@ pipelet. Now to attach one pipelet to another we bolt them together.
 |===||===||===||===||===||===||===||===||===||===||===||===||===|
 
 ### Demo
-this is work in progress as there is now a dedicated demo module
-
-1. start your kafka cluster
-2. run the groovy script
-    * linux: `groovy scripty/random_normal.groovy`
-    * windows: `groovy scripty\random_normal.groovy`
-3. start listening on the topic
-    * linux: `./kafka-console-kafkaConsumer.sh --bootstrap-server localhost:9092 --topic test111 --fro
-m-beginning`
-    * windows: `.\kafka-console-consumer.bat --bootstrap-server localhost:9092 --topic test111 --fro
-m-beginning`
-4. now we can what we call from now on _bolt in a pipelet_
-    * `curl -X PUT "http://localhost:8080/bolt/demo-pipeline?sourceTopic=test111&targetTopic=test222&lambda=http://localhost:8000/foo"`
-
+Please checkout the demo/readme!
 
 ### Ideas
 * the pipelines should be visualized i.e. in [such a diagram](https://gojs.net/latest/samples/dynamicPorts.html)
 
-### Demo
-* We can unse an embedded kafka server for demo or testing purpose
-* To realtime plot from a topic we can use [plotly dash](https://plot.ly/dash/).
-  This is a python library and sadly the pyhton kafka client is not yet there for kafka 1.0.
-  As a workaround there is a rest endpoint provided to poll on a topic
-* We could fast and easily create python rest apis using [flask](https://blog.miguelgrinberg.com/post/designing-a-restful-api-with-python-and-flask)  
-* there is a flask like api for groovy but sadly this has a [bug](https://github.com/perwendel/spark/issues/946#issuecomment-348493178)

@@ -20,6 +20,7 @@ public class BoltsState {
 
     public BoltsState(BoltsStateKey id) {
         this.id = id;
+        this.consumerOffset = -1;
     }
 
     public BoltsStateKey getId() {
@@ -49,6 +50,10 @@ public class BoltsState {
 
     public String stateAsString() {
         return new String(state, CHAR_SET);
+    }
+
+    public long nextConsumerOffset() {
+        return getConsumerOffset() + 1;
     }
 
     public BoltsState withNewState(byte[] newState, long offset) {

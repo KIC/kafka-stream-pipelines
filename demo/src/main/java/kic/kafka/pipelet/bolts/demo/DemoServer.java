@@ -22,6 +22,7 @@ public class DemoServer {
     }
 
     @Bean
+    @Deprecated
     public TaskExecutor taskExecutor() {
         return new SimpleAsyncTaskExecutor();
     }
@@ -30,27 +31,9 @@ public class DemoServer {
     public CommandLineRunner schedulingRunner(KafkaClientService kafkaClient, TaskExecutor executor, BoltingService boltingService) {
         final RestLambdaWrapper lambdaWrapper = new RestLambdaWrapper(new RestLambda("http://localhost:8080/demo/fold?key=${event.key}&value=${event.value}&state=${state}"));
         final String demoPipeline = "demo-pipeline";
-        final String demoService = "demo-fold-service";
-        final String demoSourceTopic = "demo-111";
-        final String demoFoldTopic = "demo-fold-111";
 
         return (String... args) -> {
             log.info("starting {}", demoPipeline);
-
-            // create a new demo topic
-            kafkaClient.createTopic(demoSourceTopic);
-
-            // push some random data to the topic
-            executor.execute(new RandomNumberGenerator((key, value) -> kafkaClient.push(demoSourceTopic, key, value)));
-
-            // consume from the topic to prove its working
-            executor.execute(new DemoTopicReader("source", offset -> kafkaClient.pull(demoPipeline, demoSourceTopic, offset, 1000L)));
-
-            // bolt a demo service to the source
-            boltingService.add(demoPipeline, demoService, demoSourceTopic, demoFoldTopic, lambdaWrapper);
-
-            // consume from the new topic to prove its working
-            executor.execute(new DemoTopicReader(demoFoldTopic, offset -> kafkaClient.pull(demoPipeline, demoFoldTopic, offset, 1000L)));
         };
     }
 }

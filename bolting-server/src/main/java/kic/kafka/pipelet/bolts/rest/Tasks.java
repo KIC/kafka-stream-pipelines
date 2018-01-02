@@ -18,7 +18,7 @@ public class Tasks {
     @Autowired
     private BoltingService boltingService;
 
-    @RequestMapping(path = "/", method = RequestMethod.GET, produces = "application/json")
+    @RequestMapping(path = "", method = RequestMethod.GET, produces = "application/json")
     private List<TaskDescription> getTasks() {
         return boltingService.getTasks()
                              .stream()

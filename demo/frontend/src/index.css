@@ -1,0 +1,7 @@
+.executing {
+    background-color: green;
+}
+
+.failed {
+    background-color: red;
+}

@@ -2,6 +2,8 @@ package kic.kafka.pipelet.bolts.services.lambda;
 
 import kic.kafka.pipelet.bolts.persistence.entities.BoltsState;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.AbstractMap;
 import java.util.List;
@@ -10,10 +12,13 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class LambdaTask implements Task {
+    private static final Logger LOG = LoggerFactory.getLogger(LambdaTask.class);
     private final String taskId;
     private final Lambda<BoltsState, ConsumerRecord> lambda;
     private final Function<Long, List<ConsumerRecord>> eventSource;
     private final Consumer<Map.Entry<String, String>> eventTarget;
+    private final Consumer<Task> successHandler;
+    private final Consumer<Task> failureHandler;
     private Exception lastException = null;
     private String lastKey = null;
     private String lastValue = null;
@@ -23,20 +28,26 @@ public class LambdaTask implements Task {
     public LambdaTask(String taskId,
                       Lambda<BoltsState, ConsumerRecord> lambda,
                       Function<Long, List<ConsumerRecord>> eventSource,
-                      Consumer<Map.Entry<String, String>> eventTarget
+                      Consumer<Map.Entry<String, String>> eventTarget,
+                      Consumer<Task> successHandler,
+                      Consumer<Task> failureHandler
     ) {
         this.taskId = taskId;
         this.lambda = lambda;
         this.eventSource = eventSource;
         this.eventTarget = eventTarget;
+        this.successHandler = successHandler;
+        this.failureHandler = failureHandler;
     }
 
     @Override
     public Void call() throws Exception {
+        if (LOG.isDebugEnabled()) LOG.debug("execute tast {}", this);
+
         try {
             executing = true;
             List<ConsumerRecord> events = eventSource.apply(lambda.getCurrentState()
-                                                                  .getConsumerOffset());
+                                                                  .nextConsumerOffset());
 
             for (ConsumerRecord<?, ?> event : events) {
                 // if in one cycle someting goes wrong then we can safly throw an excption.
@@ -49,9 +60,14 @@ public class LambdaTask implements Task {
             }
 
             lastException = null;
+            successHandler.accept(this);
+
+            if (LOG.isDebugEnabled()) LOG.debug("task {} execution success", this);
             return null;
         } catch (Exception e) {
+            LOG.warn("task execution failed {}\n{}", this, e);
             lastException = e;
+            failureHandler.accept(this);
             throw e;
         } finally {
             executing = false;
@@ -82,6 +98,16 @@ public class LambdaTask implements Task {
     @Override
     public boolean isExecuting() {
         return executing;
+    }
+
+    @Override
+    public String toString() {
+        return "LambdaTask{" +
+                "taskId='" + taskId + '\'' +
+                ", lastException=" + lastException +
+                ", lastKey='" + lastKey + '\'' +
+                ", executionCount=" + executionCount +
+                '}';
     }
 
 }

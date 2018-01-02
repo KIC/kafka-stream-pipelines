@@ -3,6 +3,7 @@ package kic.kafka.pipelet.bolts.services.lambda;
 import kic.kafka.pipelet.bolts.persistence.entities.BoltsState;
 import kic.kafka.pipelet.bolts.persistence.keys.BoltsStateKey;
 import kic.kafka.pipelet.bolts.persistence.repositories.BoltsStateRepository;
+import kic.kafka.pipelet.bolts.services.Daemonify;
 import kic.kafka.pipelet.bolts.services.KafkaClientService;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
@@ -19,7 +20,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.PriorityBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -70,18 +71,23 @@ import java.util.function.Function;
  *        add this task back to the retry queue yet with a lower priority
  */
 @Service
-public class BoltingService extends Thread {
+public class BoltingService {
     private static final Logger LOG = LoggerFactory.getLogger(BoltingService.class);
-    private static final long SLEEP_FOR_NEW_TASKS = 1000L;
+    private static final long SLEEP_BETWEEN_NEW_TASKS = 1000L;
+    private static final long SLEEP_BETWEEN_RETRIES = 5000L;
+
     private final Queue<Task> taskQueue = new ConcurrentLinkedQueue<>();
-    private final Queue<Task> retryQueue = new PriorityBlockingQueue<>();
+    private final Queue<Task> retryQueue = new ConcurrentLinkedQueue<>();
     private final Set<Task> knownTasks = new HashSet<>();
+    private final Consumer<Task> successHandler = task -> taskQueue.add(task);
+    private final Consumer<Task> failureHandler = task -> retryQueue.add(task);
     private final BiFunction<String, String, Function<Long, List<ConsumerRecord>>> newTopicConsumer;
     private final Function<String, Consumer<Map.Entry<String, String>>> newTopicProvider;
     private final Function<BoltsStateKey, BoltsState> stateLoader;
     private final Consumer<BoltsState> stateUpdater;
     private final ExecutorService excutorService;
-    private boolean running = false;
+    private final Daemonify deamonifier;
+    private AtomicBoolean running = new AtomicBoolean(false);
 
     /**
      * How do we handle the restart situation?
@@ -94,25 +100,28 @@ public class BoltingService extends Thread {
      */
 
     @Autowired
-    public BoltingService(KafkaClientService kafkaClientService, BoltsStateRepository repository) {
+    public BoltingService(KafkaClientService kafkaClientService, BoltsStateRepository repository, Daemonify deamonifier) {
         this(kafkaClientService::newTopicConsumer,
              kafkaClientService::newTopicProvider,
              repository::findOne,
              repository::save,
-             Executors.newFixedThreadPool(1));
+             Executors.newFixedThreadPool(1), // FIXME inject a better threadpool
+             deamonifier);
     }
 
     public BoltingService(BiFunction<String, String, Function<Long, List<ConsumerRecord>>> newTopicConsumer,
                           Function<String, Consumer<Map.Entry<String, String>>> newTopicProvider,
                           Function<BoltsStateKey, BoltsState> stateLoader,
                           Consumer<BoltsState> stateUpdater,
-                          ExecutorService executorService
+                          ExecutorService executorService,
+                          Daemonify deamonifier
     ) {
         this.newTopicConsumer = newTopicConsumer;
         this.newTopicProvider = newTopicProvider;
         this.stateLoader = stateLoader;
         this.stateUpdater = stateUpdater;
         this.excutorService = executorService;
+        this.deamonifier = deamonifier;
     }
 
     /**
@@ -122,15 +131,19 @@ public class BoltingService extends Thread {
      *
      * send lambda as new RestLambdaWrapper(new RestLambda("http://..."));
      */
-    public void add(String pipelineId, String serviceId, String sourceTopic, String targetTopic, BiFunction<BoltsState, ConsumerRecord, BoltsState> lambda) {
-        final BoltsStateKey id = new BoltsStateKey(sourceTopic, targetTopic, serviceId); // FIXME is url needed for unique key?
+    public void add(String pipelineId, String serviceId, String sourceTopic, String targetTopic, BiFunction<BoltsState, ConsumerRecord, BoltsState> lambdaFunction) {
+        final BoltsStateKey id = new BoltsStateKey(sourceTopic, targetTopic, serviceId);
         final String taskId = pipelineId + "/" + serviceId + ":" + sourceTopic + "->" + targetTopic;
 
-        // FIXME / TODO persist this whole stuff into a database, on duplicate key throw exception (later update topic versions and reset offsets)
-        Lambda<BoltsState, ConsumerRecord> task = new Lambda(() -> stateLoader.apply(id), new BoltsState(id), lambda, stateUpdater);
+        // FIXME we need to move the RestLambdaWrapper to here: lambdaWrapper = new RestLambdaWrapper(new RestLambda(lambdaUrl, Method.valueOf(method), payLoadTempl));
+        // FIXME / TODO persist an initial empty state into a database,
+        // TODO on duplicate key throw exception (later update topic versions and reset offsets)
+        // TODO we want versioned topics
+
+        Lambda<BoltsState, ConsumerRecord> lambda = new Lambda(() -> stateLoader.apply(id), new BoltsState(id), lambdaFunction, stateUpdater);
         Function<Long, List<ConsumerRecord>> pullForTopic = newTopicConsumer.apply(taskId, sourceTopic);
         Consumer<Map.Entry<String, String>> pushToTopic = newTopicProvider.apply(targetTopic);
-        LambdaTask lte = new LambdaTask(taskId, task, pullForTopic, pushToTopic);
+        LambdaTask lte = new LambdaTask(taskId, lambda, pullForTopic, pushToTopic, successHandler, failureHandler);
 
         // remember task
         knownTasks.add(lte);
@@ -139,56 +152,20 @@ public class BoltingService extends Thread {
         taskQueue.add(lte);
     }
 
-    @Override
     public void start() {
         // inject this into the main commandline runner and start the service
-        // todo we also want to resume everything where we left
+        // todo we also want to resume everything where we left after a server restart
         LOG.info("starting lambda executor service");
-        running = true;
-        super.start();
+        running.set(true);
+
+        deamonifier.function(new TaskExecuteFunction(excutorService, taskQueue, running), SLEEP_BETWEEN_NEW_TASKS).start();
+        deamonifier.function(new TaskExecuteFunction(excutorService, retryQueue, running), SLEEP_BETWEEN_RETRIES).start();
     }
 
     public void shutdown() {
         // inject this into the main commandline runner as shutdown hook and stop the service from there
         LOG.warn("stopping lambda executor service");
-        running = false;
-    }
-
-    @Override
-    public void run() {
-        while (running) {
-            try {
-                Task task;
-                while ((task = taskQueue.poll()) != null) {
-                    LOG.debug("executing task: {}", task);
-                    excutorService.submit(makeExecutor(task));
-                }
-
-                Thread.sleep(SLEEP_FOR_NEW_TASKS);
-            } catch (Exception e) {
-                shutdown();
-                throw new RuntimeException(e);
-            }
-        }
-    }
-
-    private Runnable makeExecutor(final Task task) {
-        return () -> {
-            if (LOG.isDebugEnabled()) LOG.debug("execute tast {}", task);
-            try {
-                task.call();
-                if (LOG.isDebugEnabled()) LOG.debug("task {} execution success, put back into queue", task);
-                taskQueue.add(task);
-            } catch (Exception e) {
-                // whatever it is we need to retry the whole lot
-                // FIXME what if just the sending went wrong?
-                // FIXME provide error reason to the task
-                LOG.warn("task execution failed, put it into the retry queue", e);
-                retryQueue.add(task);
-            } finally {
-
-            }
-        };
+        running.set(false);
     }
 
     public List<Task> getTasks() {

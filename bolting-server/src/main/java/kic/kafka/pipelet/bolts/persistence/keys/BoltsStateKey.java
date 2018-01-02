@@ -2,6 +2,7 @@ package kic.kafka.pipelet.bolts.persistence.keys;
 
 import javax.persistence.Column;
 import javax.persistence.Embeddable;
+import javax.validation.constraints.NotNull;
 import java.io.Serializable;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -18,7 +19,7 @@ public class BoltsStateKey implements Serializable {
     protected BoltsStateKey() {
     }
 
-    public BoltsStateKey(String inboundTopic, String outboundTopic, String service) {
+    public BoltsStateKey(@NotNull String inboundTopic, @NotNull String outboundTopic, @NotNull String service) {
         this.inboundTopic = inboundTopic;
         this.outboundTopic = outboundTopic;
         this.service = service;
@@ -46,6 +47,26 @@ public class BoltsStateKey implements Serializable {
 
     public void setService(String service) {
         this.service = service;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        BoltsStateKey that = (BoltsStateKey) o;
+
+        if (!inboundTopic.equals(that.inboundTopic)) return false;
+        if (!outboundTopic.equals(that.outboundTopic)) return false;
+        return service.equals(that.service);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = inboundTopic.hashCode();
+        result = 31 * result + outboundTopic.hashCode();
+        result = 31 * result + service.hashCode();
+        return result;
     }
 
     @Override

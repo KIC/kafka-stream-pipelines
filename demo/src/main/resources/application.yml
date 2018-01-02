@@ -33,12 +33,12 @@ bolts:
     "[fetch.max.wait.ms]":      "5000"
     "[session.timeout.ms]":     "60000"
     "[enable.auto.commit]":     "true"
-    "[key.deserializer.java.lang.Long]":     "org.apache.kafka.common.serialization.LongDeserializer"
+    "[key.deserializer.java.lang.String]":   "org.apache.kafka.common.serialization.StringDeserializer"
     "[value.deserializer.java.lang.String]": "org.apache.kafka.common.serialization.StringDeserializer"
 
     # producer
-    "[client.id]":              "default-client"
-    "[key.serializer.java.lang.Long]":     "org.apache.kafka.common.serialization.LongSerializer"
+    "[client.id]":                         "default-client"
+    "[key.serializer.java.lang.String]":   "org.apache.kafka.common.serialization.StringSerializer"
     "[value.serializer.java.lang.String]": "org.apache.kafka.common.serialization.StringSerializer"
 
 logging:
