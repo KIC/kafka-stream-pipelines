@@ -5,9 +5,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.AbstractMap;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -16,7 +14,6 @@ public class LambdaTask implements Task {
     private final String taskId;
     private final Lambda<BoltsState, ConsumerRecord> lambda;
     private final Function<Long, List<ConsumerRecord>> eventSource;
-    private final Consumer<Map.Entry<String, String>> eventTarget;
     private final Consumer<Task> successHandler;
     private final Consumer<Task> failureHandler;
     private Exception lastException = null;
@@ -28,14 +25,12 @@ public class LambdaTask implements Task {
     public LambdaTask(String taskId,
                       Lambda<BoltsState, ConsumerRecord> lambda,
                       Function<Long, List<ConsumerRecord>> eventSource,
-                      Consumer<Map.Entry<String, String>> eventTarget,
                       Consumer<Task> successHandler,
                       Consumer<Task> failureHandler
     ) {
         this.taskId = taskId;
         this.lambda = lambda;
         this.eventSource = eventSource;
-        this.eventTarget = eventTarget;
         this.successHandler = successHandler;
         this.failureHandler = failureHandler;
     }
@@ -51,12 +46,11 @@ public class LambdaTask implements Task {
 
             for (ConsumerRecord<?, ?> event : events) {
                 // if in one cycle someting goes wrong then we can safly throw an excption.
-                // the lambdatask takes care on the state update and the caller of this callable
-                // takes care of the retry mechanism
+                // the lambdatask takes care on the state update as well as forwarding it to he next topic
+                // the caller of this callable takes care of the retry mechanism
                 BoltsState newState = lambda.execute(event);
                 lastKey = "" + event.key();
                 lastValue = newState.stateAsString();
-                eventTarget.accept(new AbstractMap.SimpleImmutableEntry<>(lastKey, lastValue));
             }
 
             lastException = null;

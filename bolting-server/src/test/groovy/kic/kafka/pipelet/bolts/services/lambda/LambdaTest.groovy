@@ -12,7 +12,7 @@ class LambdaTest extends Specification {
         def anEvent = new ConsumerRecord("aTopic", 0, 0, 0, 1)
         def aLambdaTask = new Lambda({ -> 1 },
                                          {state, event -> state + event.value},
-                                         {newState -> result = newState})
+                                         {event, newState -> result = newState})
 
         when:
         aLambdaTask.execute(anEvent)

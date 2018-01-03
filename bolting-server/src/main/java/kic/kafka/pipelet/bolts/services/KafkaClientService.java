@@ -31,10 +31,6 @@ public class KafkaClientService extends SimpleKafkaClient {
         return entry -> push(topic, entry.getKey(), entry.getValue());
     }
 
-    public RecordMetadata push(String topic, Object key, Object value) {
-        return push(topic, key.toString(), value.toString());
-    }
-
     public RecordMetadata push(String topic, String key, String value) {
         return super.send(topic, key, value);
     }

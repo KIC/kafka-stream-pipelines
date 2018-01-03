@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -21,6 +22,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -140,10 +142,17 @@ public class BoltingService {
         // TODO on duplicate key throw exception (later update topic versions and reset offsets)
         // TODO we want versioned topics
 
-        Lambda<BoltsState, ConsumerRecord> lambda = new Lambda(() -> stateLoader.apply(id), new BoltsState(id), lambdaFunction, stateUpdater);
-        Function<Long, List<ConsumerRecord>> pullForTopic = newTopicConsumer.apply(taskId, sourceTopic);
-        Consumer<Map.Entry<String, String>> pushToTopic = newTopicProvider.apply(targetTopic);
-        LambdaTask lte = new LambdaTask(taskId, lambda, pullForTopic, pushToTopic, successHandler, failureHandler);
+        // we need to put the kafka producer ${newTopicProvider.apply(targetTopic)} inside of the state updater
+        // so we only update the stae when we managed to push it forward
+        final Consumer<Map.Entry<String, String>> pushToTopic = newTopicProvider.apply(targetTopic);
+        final BiConsumer<ConsumerRecord, BoltsState> updateAndForward = (event, newState) -> {
+            pushToTopic.accept(new AbstractMap.SimpleImmutableEntry<>(event.key().toString(), newState.stateAsString()));
+            stateUpdater.accept(newState);
+        };
+
+        final Lambda<BoltsState, ConsumerRecord> lambda = new Lambda(() -> stateLoader.apply(id), new BoltsState(id), lambdaFunction, updateAndForward);
+        final Function<Long, List<ConsumerRecord>> pullForTopic = newTopicConsumer.apply(taskId, sourceTopic);
+        final LambdaTask lte = new LambdaTask(taskId, lambda, pullForTopic, successHandler, failureHandler);
 
         // remember task
         knownTasks.add(lte);

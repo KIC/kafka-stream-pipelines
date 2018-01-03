@@ -11,7 +11,7 @@ class LambdaExecutorTest extends Specification {
         def stateMaker = {value -> new BoltsState(state: "$value".bytes)}
         def stateInitializer = { -> stateMaker(0)}
         def stateUpdater = {state, event -> stateMaker(state.stateAsString().toInteger() + event.value.toInteger())}
-        def stateExtractor = {state -> }
+        def stateExtractor = {event, state -> }
         def aLambdaTask = new Lambda(stateInitializer, stateUpdater, stateExtractor)
 
         def result = []
