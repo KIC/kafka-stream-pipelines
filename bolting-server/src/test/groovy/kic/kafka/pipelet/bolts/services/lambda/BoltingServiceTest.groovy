@@ -1,6 +1,7 @@
 package kic.kafka.pipelet.bolts.services.lambda
 
 import kic.kafka.pipelet.bolts.persistence.entities.BoltsState
+import kic.kafka.pipelet.bolts.persistence.keys.BoltsStateKey
 import kic.kafka.pipelet.bolts.services.Daemonify
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import spock.lang.Specification
@@ -25,7 +26,8 @@ class BoltingServiceTest extends Specification {
         given:
         def a;
         def lambda = { state, event -> state.withNewState(null, event.offset) } as BiFunction
-        thingyService.add("pipeline1", "service1", "source1", "target1", lambda)
+        def stateId = new BoltsStateKey("pipeline1", "source1", "target1", "service1")
+        thingyService.add(stateId, lambda)
 
         when:
         a = 1

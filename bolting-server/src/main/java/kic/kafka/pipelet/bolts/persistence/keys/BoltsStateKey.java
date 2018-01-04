@@ -10,6 +10,8 @@ import java.net.URL;
 @Embeddable
 public class BoltsStateKey implements Serializable {
     @Column(nullable = false)
+    String pipeline;
+    @Column(nullable = false)
     String inboundTopic;
     @Column(nullable = false)
     String outboundTopic;
@@ -19,7 +21,8 @@ public class BoltsStateKey implements Serializable {
     protected BoltsStateKey() {
     }
 
-    public BoltsStateKey(@NotNull String inboundTopic, @NotNull String outboundTopic, @NotNull String service) {
+    public BoltsStateKey(@NotNull String pipeline, @NotNull String inboundTopic, @NotNull String outboundTopic, @NotNull String service) {
+        this.pipeline = pipeline;
         this.inboundTopic = inboundTopic;
         this.outboundTopic = outboundTopic;
         this.service = service;
@@ -56,6 +59,7 @@ public class BoltsStateKey implements Serializable {
 
         BoltsStateKey that = (BoltsStateKey) o;
 
+        if (!pipeline.equals(that.pipeline)) return false;
         if (!inboundTopic.equals(that.inboundTopic)) return false;
         if (!outboundTopic.equals(that.outboundTopic)) return false;
         return service.equals(that.service);
@@ -63,7 +67,8 @@ public class BoltsStateKey implements Serializable {
 
     @Override
     public int hashCode() {
-        int result = inboundTopic.hashCode();
+        int result = pipeline.hashCode();
+        result = 31 * result + inboundTopic.hashCode();
         result = 31 * result + outboundTopic.hashCode();
         result = 31 * result + service.hashCode();
         return result;
@@ -72,9 +77,10 @@ public class BoltsStateKey implements Serializable {
     @Override
     public String toString() {
         return "BoltsStateKey{" +
-                "inboundTopic='" + inboundTopic + '\'' +
+                "pipeline='" + pipeline + '\'' +
+                ", inboundTopic='" + inboundTopic + '\'' +
                 ", outboundTopic='" + outboundTopic + '\'' +
-                ", service=" + service +
+                ", service='" + service + '\'' +
                 '}';
     }
 }

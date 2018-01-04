@@ -1,9 +1,7 @@
 package kic.kafka.pipelet.bolts.rest;
 
-import groovyx.net.http.Method;
+import kic.kafka.pipelet.bolts.persistence.keys.BoltsStateKey;
 import kic.kafka.pipelet.bolts.services.lambda.BoltingService;
-import kic.kafka.pipelet.bolts.services.lambda.RestLambdaWrapper;
-import kic.lambda.dispatch.RestLambda;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -43,15 +41,11 @@ public class Bolting {
         String[] urlAndPayloadTemplate = lambdaCurlTemplate.split("\\s+\\-d\\s+");
         String urlTemplate = urlAndPayloadTemplate[0];
         String payloadTemplate = urlAndPayloadTemplate.length > 1 ? urlAndPayloadTemplate[1] : "";
+        BoltsStateKey id = new BoltsStateKey(pipelineName, sourceTopic, targetTopic, serviceId);
 
         // TODO move this into the bolting service
-        final RestLambdaWrapper lambdaWrapper = new RestLambdaWrapper(new RestLambda(urlTemplate, Method.valueOf(method), payloadTemplate));
-
-        boltingService.add(pipelineName,
-                           serviceId,
-                           sourceTopic,
-                           targetTopic,
-                           lambdaWrapper);
+        final String contentType = "text/plain";
+        boltingService.add(id, urlTemplate, method, payloadTemplate, contentType);
 
         // TODO make nice retruns ..
         Map result = new HashMap();
