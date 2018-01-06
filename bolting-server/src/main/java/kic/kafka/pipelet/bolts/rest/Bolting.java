@@ -18,7 +18,7 @@ import java.util.Map;
 public class Bolting {
 
     // how do we remove pipelets
-    // how to we reset pipelets? probabla we need versioned topics? deleting topics is not too easy
+    // how to we reset pipelets? probably we need versioned topics? deleting topics is not too easy
 
     @Autowired
     private BoltingService boltingService;
@@ -38,6 +38,7 @@ public class Bolting {
 
         // this is a very simple workaround to sperate url and payload.
         // later we want to implement a cURL like syntax and parse the line as if it was a curl command on the shell
+        // TODO we could use commons cli and split the payload like so: https://stackoverflow.com/a/7804472/1298461
         String[] urlAndPayloadTemplate = lambdaCurlTemplate.split("\\s+\\-d\\s+");
         String urlTemplate = urlAndPayloadTemplate[0];
         String payloadTemplate = urlAndPayloadTemplate.length > 1 ? urlAndPayloadTemplate[1] : "";

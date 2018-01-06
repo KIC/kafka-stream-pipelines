@@ -1,11 +1,15 @@
 package kic.kafka.pipelet.bolts.services.lambda;
 
 import kic.kafka.pipelet.bolts.persistence.entities.BoltsState;
+import kic.kafka.pipelet.bolts.util.Try;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.AbstractMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -14,6 +18,8 @@ public class LambdaTask implements Task {
     private final String taskId;
     private final Lambda<BoltsState, ConsumerRecord> lambda;
     private final Function<Long, List<ConsumerRecord>> eventSource;
+    private final Consumer<BoltsState> stateUpdater;
+    private final Consumer<Map.Entry<String, String>> eventTarget;
     private final Consumer<Task> successHandler;
     private final Consumer<Task> failureHandler;
     private Exception lastException = null;
@@ -25,12 +31,16 @@ public class LambdaTask implements Task {
     public LambdaTask(String taskId,
                       Lambda<BoltsState, ConsumerRecord> lambda,
                       Function<Long, List<ConsumerRecord>> eventSource,
+                      Consumer<BoltsState> stateUpdater,
+                      Consumer<Map.Entry<String, String>> eventTarget,
                       Consumer<Task> successHandler,
                       Consumer<Task> failureHandler
     ) {
         this.taskId = taskId;
         this.lambda = lambda;
         this.eventSource = eventSource;
+        this.stateUpdater = stateUpdater;
+        this.eventTarget = eventTarget;
         this.successHandler = successHandler;
         this.failureHandler = failureHandler;
     }
@@ -45,28 +55,49 @@ public class LambdaTask implements Task {
                                                                   .nextConsumerOffset());
 
             for (ConsumerRecord<?, ?> event : events) {
-                // if in one cycle someting goes wrong then we can safly throw an excption.
-                // the lambdatask takes care on the state update as well as forwarding it to he next topic
-                // the caller of this callable takes care of the retry mechanism
                 BoltsState newState = lambda.execute(event);
+
+                // try to save the state and forward the result
+                stateUpdater.accept(newState);
                 lastKey = "" + event.key();
                 lastValue = newState.stateAsString();
+                lastException = null;
+
+                try {
+                    pushForward();
+                } catch (Exception e) {
+                    failureHandler.accept(new ResendTask(this));
+                    return null;
+                }
             }
 
-            lastException = null;
-            successHandler.accept(this);
-
-            if (LOG.isDebugEnabled()) LOG.debug("task {} execution success", this);
+            succeeded();
             return null;
         } catch (Exception e) {
-            LOG.warn("task execution failed {}\n{}", this, e);
-            lastException = e;
-            failureHandler.accept(this);
+            fail(this, e);
             throw e;
         } finally {
             executing = false;
             executionCount++;
         }
+    }
+
+
+    protected void pushForward() {
+        eventTarget.accept(new AbstractMap.SimpleImmutableEntry<>(lastKey, lastValue));
+    }
+
+    protected void succeeded() {
+        // the success handler puts the task back to the task queue
+        Try.ignore(LOG.isDebugEnabled(), () -> LOG.debug("task execution success: {} \n{}\n", this, lastValue));
+        successHandler.accept(this);
+    }
+
+    protected void fail(Task task, Exception e) {
+        // failure handler puts the task abck to the retry queue
+        Try.ignore(() -> LOG.warn("task execution failed {}\n{}\n{}\n", ExceptionUtils.getStackTrace(e), task, lastKey, lastValue));
+        lastException = e;
+        failureHandler.accept(task);
     }
 
     @Override

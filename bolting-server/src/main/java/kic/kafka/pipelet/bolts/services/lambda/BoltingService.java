@@ -1,5 +1,6 @@
 package kic.kafka.pipelet.bolts.services.lambda;
 
+import groovyx.net.http.ContentType;
 import groovyx.net.http.Method;
 import kic.kafka.pipelet.bolts.persistence.entities.BoltsState;
 import kic.kafka.pipelet.bolts.persistence.keys.BoltsStateKey;
@@ -13,7 +14,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -24,7 +24,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -107,9 +106,9 @@ public class BoltingService {
     public BoltingService(KafkaClientService kafkaClientService, BoltsStateRepository repository, Daemonify deamonifier) {
         this(kafkaClientService::newTopicConsumer,
              kafkaClientService::newTopicProvider,
-             repository::findOne,
+             repository::findOne, // repository::findAll,
              repository::save,
-             Executors.newFixedThreadPool(1), // FIXME inject a better threadpool
+             Executors.newFixedThreadPool(3), // FIXME inject a better threadpool
              deamonifier);
     }
 
@@ -138,12 +137,11 @@ public class BoltingService {
      */
     public void add(BoltsStateKey boltsStateKey, String urlTemplate, String method, String payloadTemplate, String contentType) {
         // TODO add pipeline and service id and such as data to the groovy string template
-        RestLambdaWrapper lambdaWrapper = new RestLambdaWrapper(new RestLambda(urlTemplate, Method.valueOf(method), payloadTemplate));
+        RestLambdaWrapper lambdaWrapper = createRestLambda(urlTemplate, method, payloadTemplate, contentType);
 
         try {
-            // FIXME / TODO persist an initial empty state into a database
             stateUpdater.accept(new BoltsState(boltsStateKey));
-            add(boltsStateKey, lambdaWrapper);
+            enqueue(boltsStateKey, lambdaWrapper);
         } catch (Exception e) {
             // TODO on duplicate key throw exception (later update topic versions and reset offsets)
             // TODO we want versioned topics
@@ -151,34 +149,34 @@ public class BoltingService {
         }
     }
 
-    private void add(BoltsStateKey boltsStateKey, BiFunction<BoltsState, ConsumerRecord, BoltsState> lambdaFunction) {
+    private void enqueue(BoltsStateKey boltsStateKey, BiFunction<BoltsState, ConsumerRecord, BoltsState> lambdaFunction) {
         final String taskId = boltsStateKey.toString();
-        final BiConsumer<ConsumerRecord, BoltsState> updateAndForward = makeUpdateAndForwardFunction(boltsStateKey.getOutboundTopic());
-        final Lambda<BoltsState, ConsumerRecord> lambda = new Lambda(() -> stateLoader.apply(boltsStateKey), new BoltsState(boltsStateKey), lambdaFunction, updateAndForward);
+        final Consumer<Map.Entry<String, String>> pushToTopic = newTopicProvider.apply(boltsStateKey.getOutboundTopic());
+        final Lambda<BoltsState, ConsumerRecord> lambda = new Lambda(() -> stateLoader.apply(boltsStateKey), lambdaFunction);
         final Function<Long, List<ConsumerRecord>> pullForTopic = newTopicConsumer.apply(taskId, boltsStateKey.getInboundTopic());
-        final LambdaTask lte = new LambdaTask(taskId, lambda, pullForTopic, successHandler, failureHandler);
+        final LambdaTask lambdaTask = new LambdaTask(taskId, lambda, pullForTopic, stateUpdater, pushToTopic, successHandler, failureHandler);
 
         // remember task
-        knownTasks.add(lte);
+        knownTasks.add(lambdaTask);
 
         // finally put lambda task executor into the task queue
-        taskQueue.add(lte);
+        taskQueue.add(lambdaTask);
     }
 
-    private BiConsumer<ConsumerRecord, BoltsState> makeUpdateAndForwardFunction(String forTopic) {
-        final Consumer<Map.Entry<String, String>> pushToTopic = newTopicProvider.apply(forTopic);
-
-        // we need to put the kafka producer ${newTopicProvider.apply(targetTopic)} inside of the state updater
-        // so we only update the state when we managed to push it forward
-        return (event, newState) -> {
-            pushToTopic.accept(new AbstractMap.SimpleImmutableEntry<>(event.key().toString(), newState.stateAsString()));
-            stateUpdater.accept(newState);
-        };
+    private RestLambdaWrapper createRestLambda(String urlTemplate, String method, String payloadTemplate, String contentType) {
+        return new RestLambdaWrapper(new RestLambda(urlTemplate,
+                                                    Method.valueOf(method.toUpperCase()),
+                                                    payloadTemplate,
+                                                    ContentType.valueOf(contentType.toUpperCase())));
     }
 
     public void start() {
         // inject this into the main commandline runner and start the service
         // todo we also want to resume everything where we left after a server restart
+
+        // FIXME and TODO read all the state from the database and send them to the enqueue function like in the add function
+        // NOTE we need to read the current state from the database and then check if this state is actually present in the target topic
+        // if yes everything is fine and a LambdaTask else we need to stick the lambda task into a ResendTask and submmit it to the retry queue
         LOG.info("starting lambda executor service");
         running.set(true);
 

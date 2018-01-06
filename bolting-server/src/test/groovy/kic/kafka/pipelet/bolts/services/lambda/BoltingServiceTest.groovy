@@ -7,43 +7,112 @@ import org.apache.kafka.clients.consumer.ConsumerRecord
 import spock.lang.Specification
 
 import java.util.concurrent.Executors
+import java.util.concurrent.Phaser
+import java.util.concurrent.TimeUnit
 import java.util.function.BiFunction
 import java.util.function.Consumer
 import java.util.function.Function
 
 class BoltingServiceTest extends Specification {
-    static sources = [source1:[new ConsumerRecord("source1", 0, 0, 0, 1), new ConsumerRecord("source1", 0, 0, 1, 2)]]
-    static targets = [target1:[]]
-    static states = [:]
-    static BoltingService thingyService = new BoltingService({ pipelineId, topic -> { offset -> offset < sources[topic].size() ? [sources[topic][offset as int]] : [] } as Function },
-                                                             { topic -> { newState -> targets[topic] << newState } as Consumer },
-                                                             { key -> states[key] ?: new BoltsState(id: key) },
-                                                             { state -> states[state.id] = state },
-                                                              Executors.newFixedThreadPool(1),
-                                                              new Daemonify())
+    static currentOffset = -1
+    static stateId = new BoltsStateKey("pipeline1", "source1", "target1", "service1")
+    static sources = [source1:[new ConsumerRecord("source1", 0, 0, "0", "1"),
+                               new ConsumerRecord("source1", 0, 1, "1", "2"),
+                               new ConsumerRecord("source1", 0, 2, "2", "3"),
+                               new ConsumerRecord("source1", 0, 3, "3", "4"),
+                               new ConsumerRecord("source1", 0, 4, "4", "5"),
+                               new ConsumerRecord("source1", 0, 5, "5", "6"),
+                               new ConsumerRecord("source1", 0, 6, "6", "7")]]
 
-    def "test add new lambda executing service"() {
+    static consumer = { pipelineId, topic ->
+        { offset ->
+            println("poll for $offset")
+            currentOffset = offset
+            return offset < sources[topic].size() ? [sources[topic][offset as int]] : [] } as Function }
+
+
+
+    def "test bolting service" () {
+        // we have the pahses lambda, store, push where we need to deal with exceptions
+        def troubles = [false, false, false]
+        def result = []
+        def targets = []
+        def state = new BoltsState(stateId)
+        def phaser = new Phaser(2)
+
         given:
-        def a;
-        def lambda = { state, event -> state.withNewState(null, event.offset) } as BiFunction
-        def stateId = new BoltsStateKey("pipeline1", "source1", "target1", "service1")
-        thingyService.add(stateId, lambda)
+        def lambda = { s, e ->
+            wantTrouble(troubles, 0, "lambda")
+            state.withNewState(e.value.getBytes(), e.offset) } as BiFunction
+
+        def stateUpdater = {s ->
+            wantTrouble(troubles, 1, "state update")
+            state = s } as Consumer
+
+        def producer = { topic -> {
+            newState ->
+                wantTrouble(troubles, 2, "push")
+                targets << newState.value
+                phaser.arriveAndAwaitAdvance() } as Consumer }
+
+        def boltingService = new BoltingService(consumer,
+                producer,
+                { key -> state },
+                stateUpdater,
+                Executors.newFixedThreadPool(10),
+                new Daemonify())
+
+        boltingService.start()
 
         when:
-        a = 1
+        boltingService.enqueue(stateId, lambda)
+
+        // phase 1: no troubles
+        arriveAndAwaitPhaserTimeout(phaser, 20000)
+        result << (targets == ["1"] && state.stateAsString() == "1")
+        println("round ${phaser.getPhase()} is over.\npassed: ${result.last()}\nstate: $state\n$targets")
+
+        // phase 2: lambda makes trouble
+        troubles = [true, false, false]
+        arriveAndAwaitPhaserTimeout(phaser, 20000)
+        result << (targets == ["1", "2"] && state.stateAsString() == "2")
+        println("round ${phaser.getPhase()} is over.\npassed: ${result.last()}\nstate: $state\n$targets")
+
+        // phase 3: state update makes trouble
+        troubles = [false, true, false]
+        arriveAndAwaitPhaserTimeout(phaser, 20000)
+        result << (targets == ["1", "2", "3"] && state.stateAsString() == "3")
+        println("round ${phaser.getPhase()} is over.\npassed: ${result.last()}\nstate: $state\n$targets")
+
+        // phase 4: producer makes trouble
+        troubles = [false, false, true]
+        arriveAndAwaitPhaserTimeout(phaser, 20000)
+        result << (targets == ["1", "2", "3", "4"] && state.stateAsString() == "4")
+        println("round ${phaser.getPhase()} is over.\npassed: ${result.last()}\nstate: $state\n$targets")
+
+        // rest of the phases make no troubles anymore
+        for (int i=phaser.getPhase(); i<sources.source1.size(); i++) {
+            arriveAndAwaitPhaserTimeout(phaser, 20000)
+            println("round ${phaser.getPhase()} is over.\npassed: ${result.last()}\nstate: $state\n$targets")
+        }
 
         then:
-        a == a
-        Thread.sleep(2000)
-        println(targets)
+        println(result)
+        state.consumerOffset == sources.source1.last().offset()
+        state.stateAsString() == sources.source1.last().value()
+        targets == sources.source1.collect { cr -> cr.value }
+        result == [true,true,true,true]
     }
 
-    def setupSpec() {
-        thingyService.start()
+    def arriveAndAwaitPhaserTimeout(phaser, millies) {
+        phaser.arrive()
+        phaser.awaitAdvanceInterruptibly(phaser.getPhase(), millies, TimeUnit.MILLISECONDS)
     }
 
-    def cleanupSpec() {
-        thingyService.shutdown()
+    def wantTrouble(troubles, idx, who) {
+        if (troubles[idx]) {
+            troubles[idx] = false
+            throw new RuntimeException("you are in trouble $who!")
+        }
     }
-
 }

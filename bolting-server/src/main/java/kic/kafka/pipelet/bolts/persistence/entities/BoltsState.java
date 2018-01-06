@@ -44,7 +44,7 @@ public class BoltsState {
     }
 
     public void setState(byte[] state) {
-        this.state = state;
+        this.state = state != null ? state : new byte[0];
     }
 
 
@@ -57,9 +57,10 @@ public class BoltsState {
     }
 
     public BoltsState withNewState(byte[] newState, long offset) {
-        setState(newState);
-        setConsumerOffset(offset);
-        return this;
+        BoltsState newBoltState = new BoltsState(this.id);
+        newBoltState.setState(newState);
+        newBoltState.setConsumerOffset(offset);
+        return newBoltState;
     }
 
     @Override
