@@ -9,7 +9,7 @@ import groovyx.net.http.ContentType
 import static groovyx.net.http.ContentType.*
 import static groovyx.net.http.Method.*
 
-class RestLambda implements BiFunction<String, Object, String> {
+class RestLambda implements BiFunction<Object, Object, String> {
     final Method httpMethod
     final String urlTemplate
     final String payloadTemplate
@@ -23,7 +23,7 @@ class RestLambda implements BiFunction<String, Object, String> {
     }
 
     @Override
-    String apply(String currentState, Object event) {
+    String apply(Object currentState, Object event) {
         RestExecutor executor = new RestExecutor([event: event, state: currentState])
         return executor.executeTemplate(httpMethod, urlTemplate, payloadTemplate, payloadContentType).toString()
     }

@@ -45,7 +45,7 @@ public class Bolting {
         BoltsStateKey id = new BoltsStateKey(pipelineName, sourceTopic, targetTopic, serviceId);
 
         // TODO move this into the bolting service
-        final String contentType = "text/plain";
+        final String contentType = "text";
         boltingService.add(id, urlTemplate, method, payloadTemplate, contentType);
 
         // TODO make nice retruns ..

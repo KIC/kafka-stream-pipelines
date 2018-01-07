@@ -15,7 +15,7 @@ public class RestLambdaWrapper implements BiFunction<BoltsState, ConsumerRecord,
 
     @Override
     public BoltsState apply(BoltsState boltsState, ConsumerRecord consumerRecord) {
-        byte[] newState = restLambda.apply(boltsState.stateAsString(), consumerRecord).getBytes();
+        byte[] newState = restLambda.apply(boltsState, consumerRecord).getBytes();
         return boltsState.withNewState(newState, consumerRecord.offset());
     }
 }

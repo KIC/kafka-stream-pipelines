@@ -7,6 +7,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.URISyntaxException;
 import java.util.AbstractMap;
 import java.util.List;
 import java.util.Map;
@@ -52,7 +53,7 @@ public class LambdaTask implements Task {
         try {
             executing = true;
             List<ConsumerRecord> events = eventSource.apply(lambda.getCurrentState()
-                                                                  .nextConsumerOffset());
+                    .nextConsumerOffset());
 
             for (ConsumerRecord<?, ?> event : events) {
                 BoltsState newState = lambda.execute(event);
@@ -74,7 +75,9 @@ public class LambdaTask implements Task {
             succeeded();
             return null;
         } catch (Exception e) {
-            fail(this, e);
+            if (!(e.getCause() instanceof URISyntaxException)) {
+                fail(this, e);
+            }
             throw e;
         } finally {
             executing = false;

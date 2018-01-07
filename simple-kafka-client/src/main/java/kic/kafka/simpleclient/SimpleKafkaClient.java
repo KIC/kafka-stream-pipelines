@@ -5,6 +5,7 @@ import kic.kafka.simpleclient.cache.CacheFactory;
 import kic.kafka.simpleclient.cache.CachedConsumer;
 import kic.kafka.simpleclient.cache.ConsumerCacheKey;
 import kic.kafka.simpleclient.cache.ProducerCacheKey;
+import kic.kafka.simpleclient.stream.KfakaSimpleStream;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.KafkaAdminClient;
 import org.apache.kafka.clients.admin.NewTopic;
@@ -118,6 +119,11 @@ public class SimpleKafkaClient {
         for (PartitionInfo partitionInfo : consumer.partitionsFor(topic)) {
             consumer.seek(new TopicPartition(topic, partitionInfo.partition()), offset);
         }*/
+    }
+
+    public KfakaSimpleStream streaming(String streamId) {
+        // FIXME get unique streams for each id
+        return new KfakaSimpleStream(kafkaProperties);
     }
 
     /**

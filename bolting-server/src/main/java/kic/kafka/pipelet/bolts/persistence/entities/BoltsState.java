@@ -85,10 +85,6 @@ public class BoltsState {
 
     @Override
     public String toString() {
-        return "BoltsState{" +
-                "id=" + id +
-                ", consumerOffset=" + consumerOffset +
-                ", state=" + new String(state) +
-                '}';
+        return stateAsString();
     }
 }
