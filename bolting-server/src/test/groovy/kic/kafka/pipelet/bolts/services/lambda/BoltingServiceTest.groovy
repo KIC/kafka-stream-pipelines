@@ -37,13 +37,14 @@ class BoltingServiceTest extends Specification {
         def troubles = [false, false, false]
         def result = []
         def targets = []
-        def state = new BoltsState(stateId)
+        def state = new BoltsState(stateId).withNewState("0".bytes, -1)
         def phaser = new Phaser(2)
+        def expected = ["1", "3", "6", "10", "15", "21", "28"]
 
         given:
         def lambda = { s, e ->
             wantTrouble(troubles, 0, "lambda")
-            state.withNewState(e.value.getBytes(), e.offset) } as BiFunction
+            s.withNewState("${s.stateAsString().toInteger() + e.value.toInteger()}".getBytes(), e.offset) } as BiFunction
 
         def stateUpdater = {s ->
             wantTrouble(troubles, 1, "state update")
@@ -69,25 +70,25 @@ class BoltingServiceTest extends Specification {
 
         // phase 1: no troubles
         arriveAndAwaitPhaserTimeout(phaser, 20000)
-        result << (targets == ["1"] && state.stateAsString() == "1")
+        result << (targets == expected[0..0] && state.stateAsString() == expected[0])
         println("round ${phaser.getPhase()} is over.\npassed: ${result.last()}\nstate: $state\n$targets")
 
         // phase 2: lambda makes trouble
         troubles = [true, false, false]
         arriveAndAwaitPhaserTimeout(phaser, 20000)
-        result << (targets == ["1", "2"] && state.stateAsString() == "2")
+        result << (targets == expected[0..1] && state.stateAsString() == expected[1])
         println("round ${phaser.getPhase()} is over.\npassed: ${result.last()}\nstate: $state\n$targets")
 
         // phase 3: state update makes trouble
         troubles = [false, true, false]
         arriveAndAwaitPhaserTimeout(phaser, 20000)
-        result << (targets == ["1", "2", "3"] && state.stateAsString() == "3")
+        result << (targets == expected[0..2] && state.stateAsString() == expected[2])
         println("round ${phaser.getPhase()} is over.\npassed: ${result.last()}\nstate: $state\n$targets")
 
         // phase 4: producer makes trouble
         troubles = [false, false, true]
         arriveAndAwaitPhaserTimeout(phaser, 20000)
-        result << (targets == ["1", "2", "3", "4"] && state.stateAsString() == "4")
+        result << (targets == expected[0..3] && state.stateAsString() == expected[3])
         println("round ${phaser.getPhase()} is over.\npassed: ${result.last()}\nstate: $state\n$targets")
 
         // rest of the phases make no troubles anymore
@@ -99,8 +100,8 @@ class BoltingServiceTest extends Specification {
         then:
         println(result)
         state.consumerOffset == sources.source1.last().offset()
-        state.stateAsString() == sources.source1.last().value()
-        targets == sources.source1.collect { cr -> cr.value }
+        state.stateAsString() == expected.last()
+        targets == expected
         result == [true,true,true,true]
     }
 
