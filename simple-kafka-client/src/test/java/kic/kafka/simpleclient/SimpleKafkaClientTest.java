@@ -1,15 +1,23 @@
 package kic.kafka.simpleclient;
 
 import kic.kafka.embedded.EmbeddedKafaJavaWrapper$;
+import org.apache.kafka.streams.KafkaStreams;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 public class SimpleKafkaClientTest {
     static SimpleKafkaClient client;
@@ -78,6 +86,38 @@ public class SimpleKafkaClientTest {
         Records<Long, ArrayList> records = client.poll("test-client", topic, Long.class, ArrayList.class, 0, 1000);
         assertTrue(records.size() > 0);
         assertEquals(0, records.iterator().next().value().size());
+    }
+
+    @Test
+    public void testStream() throws InterruptedException {
+        final String topic = "test-stream-topic";
+        final String message = "test message";
+        final long key = 1L;
+        final CountDownLatch latch = new CountDownLatch(1);
+        final Map result = new HashMap();
+        final KafkaStreams kafkaStreams = client.streaming("test-stream")
+                                                .start(b -> b.stream(topic).foreach((k, v) -> {
+                                                    result.put(k, v);
+                                                    latch.countDown();
+                                                }));
+
+        client.send(topic, key, message);
+        latch.await();
+
+        System.out.println(result);
+        assertEquals(1, result.size());
+        assertEquals(message, result.get(key));
+        kafkaStreams.close(1, TimeUnit.SECONDS);
+        kafkaStreams.cleanUp();
+    }
+
+    @Test
+    public void testDeleteAll() {
+        final String topic = "some-bugous-topic";
+        client.createTopic(topic);
+        assertTrue(client.listTopics().size() > 0);
+        client.deleteAllTopics();
+        assertTrue(client.listTopics().size() <= 0);
     }
 
     // if a kafkaConsumer misses to send a heartbeat and gets stalled we want to detect, close and recreate the kafkaConsumer

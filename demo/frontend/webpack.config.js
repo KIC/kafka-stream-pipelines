@@ -1,17 +1,29 @@
 var path = require('path');
 var webpack = require('webpack');
 var HtmlWebpackPlugin = require('html-webpack-plugin');
+var LodashModuleReplacementPlugin = require('lodash-webpack-plugin');
 
 module.exports = {
-  devtool: 'eval',
+  devtool:'source-map',
   devServer: {
     port: 3030,
     proxy: {
-      "/api": "http://localhost:8080"
+      "/api": "http://localhost:8080",
+      "/sockjs-node": {
+        target: "http://localhost:8080",
+        ws: true
+      },
+      "/": {
+        target: "ws://localhost:8080",
+        ws: true
+      },
     }
   },
   node: {
-    fs: "empty"
+    fs: "empty",
+    net: "empty",
+    tls: "empty",
+    console: true
   },
   entry: [
     './src/index'
@@ -23,10 +35,16 @@ module.exports = {
   },
   plugins: [
     new webpack.HotModuleReplacementPlugin(),
-    new webpack.optimize.DedupePlugin(),
+    new LodashModuleReplacementPlugin,
     new HtmlWebpackPlugin({
         title: 'Boot React',
         template: path.join(__dirname, 'assets/index-template.html')
+    }),
+    new webpack.DefinePlugin({
+      'process.env': {
+          // This has effect on the react lib size
+          NODE_ENV: JSON.stringify('production'),
+      },
     })
   ],
   resolve: {
@@ -38,9 +56,13 @@ module.exports = {
       use: ['babel-loader'],
       include: path.join(__dirname, 'src')
     },
+    {
+      test: /.*gl-matrix.*\.js$/,
+      use:['babel-loader']
+    },
     { 
       test: /\.(png|woff|woff2|eot|ttf|svg)$/, 
-      loader: 'url-loader?limit=100000' 
+      loader: ['url-loader?limit=100000']
     },
     {
       test:/\.css$/, 
@@ -48,7 +70,7 @@ module.exports = {
     },
     {
       test: /\.js$/,
-      use: 'ify-loader',
+      use:['ify-loader']
     }]
   }
 };

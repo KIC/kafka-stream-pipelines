@@ -21,7 +21,9 @@ bolts:
     zookeper-port: 2181
     kafka-port: 9092
   kafka:
-    #kafak simple client
+    #kafka embedded server
+    #"[log.dirs]":               "/tmp/kafka-log"
+    #kafka simple client
     "[max.connection.retry]":   "100"
     #kafka client
     "[bootstrap.servers]":      "localhost:9092"
@@ -35,19 +37,29 @@ bolts:
     "[enable.auto.commit]":     "true"
     "[key.deserializer.java.lang.String]":   "org.apache.kafka.common.serialization.StringDeserializer"
     "[value.deserializer.java.lang.String]": "org.apache.kafka.common.serialization.StringDeserializer"
-
     # producer
     "[client.id]":                         "default-client"
     "[key.serializer.java.lang.String]":   "org.apache.kafka.common.serialization.StringSerializer"
     "[value.serializer.java.lang.String]": "org.apache.kafka.common.serialization.StringSerializer"
+    # stream api
+    "[key.serde]":              "org.apache.kafka.common.serialization.Serdes$StringSerde"
+    "[value.serde]":            "org.apache.kafka.common.serialization.Serdes$StringSerde"
+    #"[state.dir]":              "./tmp/kafka-state"
 
 logging:
   level:
     root: INFO
+    com:
+      yammer:
+        metrics:
+          reporting: ERROR
+    kafka:
+      server: ERROR
     kic: DEBUG
     org:
       apache:
         kafka:
           clients:
             NetworkClient: ERROR
+        zookeeper: ERROR
       springframework: WARN

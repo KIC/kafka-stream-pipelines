@@ -1,7 +1,7 @@
 buildscript {
     ext {
-        springBootVersion = '1.5.8.RELEASE'
-        springCloudVersion = 'Dalston.SR4'
+        springBootVersion = '1.5.9.RELEASE'
+        springCloudVersion = 'Finchley.M5'
     }
     repositories {
         mavenCentral()
@@ -9,7 +9,6 @@ buildscript {
     }
     dependencies {
         classpath "org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}"
-        classpath "com.linkedin.pygradle:pygradle-plugin:0.6.17"
     }
 }
 

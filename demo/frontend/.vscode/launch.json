@@ -1,0 +1,17 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    // dont forget to install chrome extension
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Data browser",
+            "type": "chrome",
+            "request": "launch",
+            "url": "http://localhost:3030/",
+            "sourceMaps": true,
+            "webRoot": "${workspaceRoot}"
+        }
+    ]
+}

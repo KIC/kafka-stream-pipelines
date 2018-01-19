@@ -4,8 +4,9 @@
   "description": "Demo Frontend",
   "scripts": {
     "lint": "eslint src",
-    "start": "webpack-dev-server --hot --open",
-    "bundle": "webpack --optimize-minimize --output-public-path /"
+    "start": "webpack-dev-server --hot --open --env.devmode",
+    "bundle": "webpack --optimize-minimize --output-public-path /",
+    "test": ""
   },
   "repository": {
     "type": "git",
@@ -36,16 +37,20 @@
     "file-loader": "^1.1.6",
     "html-webpack-plugin": "^2.30.1",
     "ify-loader": "^1.1.0",
+    "lodash-webpack-plugin": "^0.11.4",
     "style-loader": "^0.19.1",
     "transform-loader": "^0.2.4",
+    "uglifyjs-webpack-plugin": "^1.1.6",
     "url-loader": "^0.6.2",
     "webpack": "^3.5.5",
     "webpack-dev-server": "^2.7.1"
   },
   "dependencies": {
+    "@stomp/stompjs": "^4.0.0",
     "axios": "^0.17.1",
     "bootstrap": "4.0.0-alpha.6",
     "classnames": "^2.2.5",
+    "lodash": "^4.17.4",
     "mobx": "^3.0.0",
     "mobx-react": "^4.1.0",
     "mobx-react-devtools": "^4.2.11",
@@ -53,8 +58,12 @@
     "react": "^16.2.0",
     "react-dom": "^16.2.0",
     "react-plotly.js": "^1.0.4",
+    "react-stomp": "^2.1.1",
     "react-transition-group": "^2.2.1",
     "reactstrap": "^4.8.0",
-    "victory": "^0.24.3"
+    "sockjs": "^0.3.19",
+    "sockjs-client": "^1.1.4",
+    "victory": "^0.24.3",
+    "webstomp-client": "^1.2.0"
   }
 }

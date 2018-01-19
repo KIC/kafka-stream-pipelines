@@ -24,6 +24,10 @@ public class ConsumerCacheKey {
         return lock;
     }
 
+    public String getClientId() {
+        return name + "/" + topic;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

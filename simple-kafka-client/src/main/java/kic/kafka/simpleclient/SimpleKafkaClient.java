@@ -5,10 +5,11 @@ import kic.kafka.simpleclient.cache.CacheFactory;
 import kic.kafka.simpleclient.cache.CachedConsumer;
 import kic.kafka.simpleclient.cache.ConsumerCacheKey;
 import kic.kafka.simpleclient.cache.ProducerCacheKey;
-import kic.kafka.simpleclient.stream.KfakaSimpleStream;
+import kic.kafka.simpleclient.stream.KafkaSimpleStream;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.KafkaAdminClient;
 import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -18,6 +19,7 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.TopicExistsException;
+import org.apache.kafka.streams.StreamsConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -84,7 +86,7 @@ public class SimpleKafkaClient {
 
                     // we need an async background task because if a coumer is in the state of rebalancing
                     // I have experienced some long waiting operation (longer then the poll timeout!)
-                    if (offset != cachedConsumer.lastPulledOffset + 1) seek(consumer, topic, offset);
+                    if (offset != cachedConsumer.lastPulledOffset + 1 || offset < 0) seek(consumer, topic, offset);
                     ConsumerRecords<K, V> consumedRecords = consumer.poll(timeOutInMs);
                     /* TODO we can enable the following via configuration
                     ConsumerRecords<K, V> consumedRecords = timeOutableOperation(() -> {
@@ -108,22 +110,33 @@ public class SimpleKafkaClient {
         }
 
         // if everyting fails return and emtpy list
-        return new Records<>(new ArrayList<>(), -1);
+        return new Records<>(new ArrayList<>(), -1, -1);
     }
 
     public void seek(KafkaConsumer<?, ?> consumer, String topic, long offset) {
         LOG.debug("'{}' seek {}", topic, offset);
-        consumer.seek(new TopicPartition(topic, 0), offset);
+        List<TopicPartition> topicPartitions = Arrays.asList(new TopicPartition(topic, 0));
 
-        /* we only suport one partition at the moment
-        for (PartitionInfo partitionInfo : consumer.partitionsFor(topic)) {
-            consumer.seek(new TopicPartition(topic, partitionInfo.partition()), offset);
-        }*/
+        if (offset >= 0) {
+            // we only support one partition at the moment
+            for (TopicPartition topicPartition : topicPartitions)
+                consumer.seek(topicPartition, offset);
+        } else {
+            consumer.seekToEnd(topicPartitions);
+        }
     }
 
-    public KfakaSimpleStream streaming(String streamId) {
-        // FIXME get unique streams for each id
-        return new KfakaSimpleStream(kafkaProperties);
+    // FIXME we should add the same logic with passing classes like in the comsumer: Class<K> keyClass, Class<V> valueClass
+    public KafkaSimpleStream streaming(String streamId) {
+        return new KafkaSimpleStream(new PropertiesExtender(kafkaProperties).with(StreamsConfig.APPLICATION_ID_CONFIG, streamId)
+                                                                            .with(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
+                                                                            .extend());
+    }
+
+    public void deleteAllTopics() {
+        Set<String> topics = listTopics();
+        LOG.info("trying to delete topics: {}", topics);
+        deleteTopic(topics.toArray(new String[0]));
     }
 
     /**
@@ -191,6 +204,12 @@ public class SimpleKafkaClient {
             getAdminClient().deleteTopics(Arrays.asList(topics))
                             .all()
                             .get();
+
+            List<String> deleteTopics = new ArrayList<>(Arrays.asList(topics));
+            while (deleteTopics.size() > 0) {
+                deleteTopics.retainAll(listTopics());
+                Thread.sleep(200L);
+            }
         } catch (InterruptedException | ExecutionException e) {
             // FIXME what should we do? e.printStackTrace();
         }
@@ -199,13 +218,13 @@ public class SimpleKafkaClient {
     private <K, V>Records<K, V> mapRecords(ConsumerRecords<K, V> consumerRecords) {
         List<ConsumerRecord<K, V>> records = new ArrayList<>(consumerRecords.count());
         Iterator<ConsumerRecord<K, V>> it = consumerRecords.iterator();
-        LOG.debug("polled rows: {}", consumerRecords.count());
 
         while (it.hasNext()) records.add(it.next());
-        long offset = records.size() > 0 ? records.get(records.size() - 1).offset() : 0;
+        long startOffset = records.size() > 0 ? records.get(0).offset() : -1;
+        long endOffset = records.size() > 0 ? records.get(records.size() - 1).offset() : -1;
 
-        if (LOG.isDebugEnabled()) LOG.debug("polled rows: {}", records);
-        return new Records<>(records, offset);
+        if (LOG.isDebugEnabled()) LOG.debug("polled rows at offsets {} - {} : {}, {}", startOffset, endOffset, records.size(), records);
+        return new Records<>(records, startOffset, endOffset);
     }
 
     private <T>T timeOutableOperation(Callable<T> task, long timeoutInMs) throws InterruptedException, ExecutionException, TimeoutException {

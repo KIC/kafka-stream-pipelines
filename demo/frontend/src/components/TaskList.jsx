@@ -7,13 +7,13 @@ import Task from "./Task";
 class TaskList extends React.Component {
   
   componentDidMount() {
-    this.props.store.poll();
+    
   }
 
   render() {
     return (
       <ul>
-        {this.props.store.tasks.map(task => (
+        {this.props.store.map(task => (
           <Task task={task} />
         ))}
       </ul>

@@ -2,6 +2,7 @@ package kic.kafka.pipelet.bolts.rest;
 
 import kic.kafka.pipelet.bolts.services.KafkaClientService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
@@ -24,6 +25,16 @@ public class Topics {
                                  .map(this::removeVersionFromTopic)
                                  .collect(toSet());
     }
+
+    @RequestMapping(path = "/delete/{topic}", method = RequestMethod.DELETE)
+    private void deleteTopics(@PathVariable String topic) throws MalformedURLException {
+        if (topic.equals("*")) {
+            kafkaClientService.deleteAllTopics();
+        } else {
+            kafkaClientService.deleteTopic(topic);
+        }
+    }
+
 
     private String removeVersionFromTopic(String topic) {
         return topic.split("\\.v")[0];

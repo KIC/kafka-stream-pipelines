@@ -16,10 +16,6 @@ spring:
     hibernate:
       ddl-auto: update
 bolts:
-  embedded-kafka:
-    enabled: true
-    zookeper-port: 2181
-    kafka-port: 9092
   kafka:
     #kafak simple client
     "[max.connection.retry]":   "100"
@@ -35,11 +31,13 @@ bolts:
     "[enable.auto.commit]":     "true"
     "[key.deserializer.java.lang.String]":   "org.apache.kafka.common.serialization.StringDeserializer"
     "[value.deserializer.java.lang.String]": "org.apache.kafka.common.serialization.StringDeserializer"
-
     # producer
     "[client.id]":              "default-client"
     "[key.serializer.java.lang.String]":   "org.apache.kafka.common.serialization.StringSerializer"
     "[value.serializer.java.lang.String]": "org.apache.kafka.common.serialization.StringSerializer"
+    # stream api
+    "[key.serde]":              "org.apache.kafka.common.serialization.Serdes$StringSerde"
+    "[value.serde]":            "org.apache.kafka.common.serialization.Serdes$StringSerde"
 
 logging:
   level:

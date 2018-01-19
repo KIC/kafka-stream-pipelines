@@ -15,6 +15,7 @@ import java.util.function.Function;
 
 @Service
 public class KafkaClientService extends SimpleKafkaClient {
+
     final BoltsConfiguration configuration;
 
     @Autowired
@@ -38,4 +39,5 @@ public class KafkaClientService extends SimpleKafkaClient {
     public Records<String, String> pull(String name, String topic, long offset, long timeOutInMs) {
         return super.poll(name, topic, String.class, String.class, offset, timeOutInMs);
     }
+
 }

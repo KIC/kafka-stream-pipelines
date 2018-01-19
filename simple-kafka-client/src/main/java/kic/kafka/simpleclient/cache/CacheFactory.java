@@ -57,6 +57,8 @@ public class CacheFactory {
     }
 
     private static CachedConsumer makeConsumer(ConsumerCacheKey cacheKey, Properties properties) {
+        LOG.debug("make a new consumer for {}", cacheKey);
+
         // we need to maintain the de-serializers via properties file
         // we also need a default serializer -> use byte-de-serializer -> de-serialize object from bytes
         // and we need a random group id
@@ -66,7 +68,7 @@ public class CacheFactory {
 
         KafkaConsumer consumer = new KafkaConsumer(new PropertiesExtender(properties).with("key.deserializer", keyDeSerializer)
                                                                                      .with("value.deserializer", valueDeSerializer)
-                                                                                     .with("client.id", cacheKey.name)
+                                                                                     .with("client.id", cacheKey.getClientId())
                                                                                      .with("group.id", groupId)
                                                                                      .extend());
 

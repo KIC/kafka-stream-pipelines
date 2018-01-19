@@ -19,6 +19,16 @@ pipelet. Now to attach one pipelet to another we bolt them together.
 ### Demo
 Please checkout the demo/readme!
 
+### TODO
+- [ ] persist pipelets and state and test server restart. 
+- [ ] sources: just like pipelets we also want to discover sources 
+available for the bolting machine. All sources should also be backupped
+by some database so that we can replay whole pipelines if neccessary 
+- [ ] versioning of topics: if we repplace a pipelet we want to re-run
+all the topics depending on the replaced target topic. To do so we need 
+to have some kind of versioned topics.
+
+
 ### Ideas
 * the pipelines should be visualized i.e. in [such a diagram](https://gojs.net/latest/samples/dynamicPorts.html)
 

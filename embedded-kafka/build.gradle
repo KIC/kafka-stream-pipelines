@@ -9,6 +9,13 @@ repositories {
     mavenCentral()
 }
 
+task start(type: JavaExec, dependsOn: classes) {
+    main = "kic.kafka.embedded.StandaloneKafkaServer"
+    // args "9092", "2181"
+    classpath sourceSets.main.runtimeClasspath
+    classpath configurations.runtime
+}
+
 dependencies {
     compile 'org.scala-lang:scala-compiler:2.11.12'
     compile 'org.scala-lang:scala-library:2.11.12'

@@ -10,7 +10,7 @@ public class PropertiesExtender {
     }
 
     public PropertiesExtender with(String key, String value) {
-        properties.setProperty(key, value);
+        if (value != null) properties.setProperty(key, value);
         return this;
     }
 

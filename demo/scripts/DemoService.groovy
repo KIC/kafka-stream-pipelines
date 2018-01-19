@@ -7,7 +7,7 @@ println('''
 Usage:
 curl -H "Content-Type: text/plain" \\
 -X POST 'http://localhost:8080/api/v1/bolt/demo-pipeline/demo-service-1/demo.returns/demo.performance/GET' \\
--d 'http://localhost:4567/demo/fold?key=${event.key}&value=${event.value}&state=${state}&offset=${state.nextConsumerOffset}'
+-d 'http://localhost:4567/demo/fold?key=${event.key}&value=${event.value}&state=${state}&offset=${state.nextConsumerOffset()}'
 ''')
 
 get("/demo/fold", {req, res ->

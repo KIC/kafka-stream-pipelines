@@ -1,6 +1,7 @@
 .gradle/
 target/
 !.mvn/wrapper/maven-wrapper.jar
+tmp/
 
 .apt_generated
 .classpath
