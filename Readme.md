@@ -17,7 +17,36 @@ pipelet. Now to attach one pipelet to another we bolt them together.
 |===||===||===||===||===||===||===||===||===||===||===||===||===|
 
 ### Demo
-Please checkout the demo/readme!
+* compile demo `./gradlew clean :demo:build` 
+* run the demo `java -jar demo/build/libs/demo-1.0-SNAPSHOT.jar`
+    * this starts an embedded kafka cluster 
+    * and the bolting server
+* browse to [http://localhost:8080/](http://localhost:8080/) 
+* add "demo.returs" topic as a "bar" chart
+* open up a new console and run `./gradlew :demo:startSource`
+* you should see the returns chart updating on the ui
+* add the topic "demo.performance" as a "line" chart
+* run curl and bolt demo service to source
+```
+curl -H "Content-Type: text/plain" \
+-X POST 'http://localhost:8080/api/v1/bolt/demo-pipeline/demo-service-1/demo.returns/demo.performance/GET' \
+-d 'http://localhost:4567/demo/fold?key=${event.key}&value=${event.value}&state=${state}&offset=${state.nextConsumerOffset()}'
+```
+* run `./gradlew :demo:startService` in yet another new terminal window
+* the performance chart should update in sync with the returns chart
+
+now we can do some stuff like 
+* kill and restart demo service without dataloss
+* _persist the pipeline and also allow to restart the bolting service (comming up next)_
+* _replace service by a different one (comming up next)_
+
+### Development
+* For the react frontend we have a webpack development server: `./gradlew :demo:frontend:start --no-daemon`
+* We have embedded a kafa server into the demo module. During development boot up time with
+the full embedded kafka is too slow so we can start a kafka server during development like so: 
+`./gradlew :embedded-kafka:start`   
+* A demo source can be started with: `./gradlew :demo:startSource`
+* A demo service can be started with: `./gradlew :demo:startService` 
 
 ### TODO
 - [ ] persist pipelets and state and test server restart. 
