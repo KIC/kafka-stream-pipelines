@@ -1,0 +1,22 @@
+{
+  "jobs": [
+    {
+      "id": "test-1",
+      "topic": "aapl.price",
+      "dir": ".",
+      "env": [],
+      "command": ["java", "-cp", "${CLASS_PATH}", "cli.Echo", "Hello World:22"],
+      "defaultArgumentValues": {},
+      "keyExtractor": ["java", "-cp", "${CLASS_PATH}", "cli.Grep", "Hello World:22"],
+      "valueExtractor": ["java", "-cp", "${CLASS_PATH}", "cli.Echo", "Hello World:22"],
+      "encoding": "UTF-8",
+      "schedule": {
+          "minutes": "*",
+          "hours": "*",
+          "days": "*",
+          "month": "*",
+          "daysOfWeek": "*"
+      }
+    }
+  ]
+}

@@ -5,3 +5,5 @@ include ':simple-kafka-client'
 include ':bolting-server'
 include ':demo'
 include ':demo:frontend'
+include ':source-server'
+

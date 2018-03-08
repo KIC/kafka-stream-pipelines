@@ -1,0 +1,22 @@
+{
+  "jobs": [
+    {
+      "id": "123",
+      "topic": "aapl.price",
+      "dir": ".",
+      "env": [],
+      "command": ["java", "-cp", "${CLASS_PATH}", "-version"],
+      "defaultArgumentValues": {},
+      "keyExtractor": ["java", "-version"],
+      "valueExtractor": ["java", "-version"],
+      "encoding": "UTF-8",
+      "schedule": {
+          "minutes": "*",
+          "hours": "*",
+          "days": "*",
+          "month": "*",
+          "daysOfWeek": "*"
+      }
+    }
+  ]
+}

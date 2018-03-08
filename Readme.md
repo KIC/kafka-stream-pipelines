@@ -61,3 +61,26 @@ to have some kind of versioned topics.
 ### Ideas
 * the pipelines should be visualized i.e. in [such a diagram](https://gojs.net/latest/samples/dynamicPorts.html)
 
+### next steps
+make a new module for sources, introduce a cron syntax like cron4j and use shell commands
+as sources where we simple read the stout and a key extractor as well as a value extractor
+we pipe the stdout to the std in of the extractors. the result we just push to our kafka topic.
+this way one could use simple curl commands and/or javascript as sources
+
+make an selfcontained command line pipeline like one could do on unix 
+`curl "" | awk "x"` using https://docs.oracle.com/javase/7/docs/api/java/io/PipedInputStream.html
+
+use process builder:
+```  
+ProcessBuilder pb = new ProcessBuilder();
+pb.redirectInput(new FileInputStream(new File(infile));
+pb.redirectOutput(new FileOutputStream(new File(outfile));
+pb.command(cmd);
+pb.start().waitFor();
+``` 
+
+we stick all the commands in a file like so:
+cron       | command                                                                 | key-extractor | value-extractor
+*/1 * * *  | curl "http://../..?key=$lastKey&value=$lastValue&lastResut=$lastResult" | grep key      | grap value 
+
+Note: we need to filter the last known line as we need to avoid duplicates
