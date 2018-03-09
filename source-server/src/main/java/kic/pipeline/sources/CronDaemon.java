@@ -5,6 +5,7 @@ import it.sauronsoftware.cron4j.Scheduler;
 import it.sauronsoftware.cron4j.SchedulerListener;
 import it.sauronsoftware.cron4j.TaskExecutor;
 import kic.pipeline.sources.dto.Jobs;
+import kic.pipeline.sources.spring.services.JobStateService;
 import kic.pipeline.sources.task.ShellTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +35,9 @@ public class CronDaemon implements CommandLineRunner {
 
     @Autowired
     private ApplicationContext context;
+
+    @Autowired
+    private JobStateService jobStateService;
 
     @Autowired(required = false)
     @Qualifier("KeyValueConsumer")
@@ -158,7 +162,9 @@ public class CronDaemon implements CommandLineRunner {
                              job.command,
                              job.keyExtractor,
                              job.valueExtractor,
-                             keyValueConsumer);
+                             keyValueConsumer,
+                             jobStateService::getState,
+                             jobStateService::setState);
     }
 
     private Jobs.Job findJob(Jobs jobs, String id) {

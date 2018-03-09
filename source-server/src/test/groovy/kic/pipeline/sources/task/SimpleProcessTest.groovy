@@ -8,7 +8,7 @@ class SimpleProcessTest extends Specification {
         def sp = new SimpleProcess(["bash", "-c", "cat"] as String[])
 
         when:
-        def rs = sp.execute("hello world".getBytes("UTF-8"))
+        def rs = sp.execute(null, "hello world".getBytes("UTF-8"))
 
         println(rs.returnCode)
         println(new String(rs.stdOut, "UTF-8"));

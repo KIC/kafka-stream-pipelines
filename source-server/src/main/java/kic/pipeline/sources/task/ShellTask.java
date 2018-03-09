@@ -3,21 +3,19 @@ package kic.pipeline.sources.task;
 import groovy.text.GStringTemplateEngine;
 import it.sauronsoftware.cron4j.Task;
 import it.sauronsoftware.cron4j.TaskExecutionContext;
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.io.output.ByteArrayOutputStream;
-import org.apache.commons.io.output.TeeOutputStream;
+import kic.pipeline.sources.spring.entities.JobState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class ShellTask extends Task {
@@ -30,10 +28,12 @@ public class ShellTask extends Task {
     private final String pipeEncoding;
     private final String schedule;
     private final File workingDirectory;
-    private final String[] command;
-    private final String[] keyExtractCommand;
-    private final String[] valueExtractCommand;
+    private final List<String> command;
+    private final List<String> keyExtractCommand;
+    private final List<String> valueExtractCommand;
     private final BiConsumer<String, String> keyValueConsumer;
+    private final Function<String, JobState> getJobState;
+    private final Consumer<JobState> updateJobState;
     private String scheduleId = null;
 
     public ShellTask(String jobId,
@@ -43,62 +43,50 @@ public class ShellTask extends Task {
                      List<String> command,
                      List<String> keyExtractCommand,
                      List<String> valueExtractCommand,
-                     BiConsumer<String, String> keyValueConsumer
-    ) {
-        variableBindings.put("CLASS_PATH", System.getProperty("java.class.path"));
+                     BiConsumer<String, String> keyValueConsumer,
+                     Function<String, JobState> getJobState, Consumer<JobState> updateJobState) {
         this.jobId = jobId;
         this.pipeEncoding = pipeEncoding;
         this.schedule = schedule;
         this.workingDirectory = workingDirectory;
         this.keyValueConsumer = keyValueConsumer;
-        this.command = generateProcessCommand(command);
-        this.keyExtractCommand = generateProcessCommand(keyExtractCommand);
-        this.valueExtractCommand = generateProcessCommand(valueExtractCommand);
+        this.command = command;
+        this.keyExtractCommand = keyExtractCommand;
+        this.valueExtractCommand = valueExtractCommand;
+        this.getJobState = getJobState != null ? getJobState : id -> new JobState(id);
+        this.updateJobState = updateJobState != null ? updateJobState : s -> {};
+        variableBindings.put("CLASS_PATH", System.getProperty("java.class.path"));
     }
 
 
     @Override
     public void execute(TaskExecutionContext context) throws RuntimeException {
-        ProcessBuilder commandProcessBuilder = new ProcessBuilder(command);
-        ProcessBuilder extractKeyProcessBuilder = new ProcessBuilder(keyExtractCommand);
-        ProcessBuilder extractValueProcessBuilder = new ProcessBuilder(valueExtractCommand);
-
-        setWorkingDirectory(commandProcessBuilder, extractKeyProcessBuilder, extractValueProcessBuilder);
+        JobState jobState = getJobState.apply(jobId);
+        SimpleProcess dataCommand = new SimpleProcess(generateProcessCommand(command));
+        SimpleProcess getKeyCommand = new SimpleProcess(generateProcessCommand(keyExtractCommand));
+        SimpleProcess getValueCommand = new SimpleProcess(generateProcessCommand(valueExtractCommand));
 
         try {
-            Process process = commandProcessBuilder.start();
-            Process keyProcess = extractKeyProcessBuilder.start();
-            Process valueProcess = extractValueProcessBuilder.start();
+            SimpleProcess.ProcessResult dataResult = dataCommand.execute(workingDirectory, new byte[0]);
+            jobState.setStdOut(new String(dataResult.stdOut, pipeEncoding));
+            jobState.setStdErr(new String(dataResult.stdErr, pipeEncoding));
 
-            OutputStream logErrProcess = new LogStream(jobId + Arrays.toString(command));
-            OutputStream logErrKey = new LogStream(jobId + "(key)" + Arrays.toString(keyExtractCommand));
-            OutputStream logErrValue = new LogStream(jobId + "(value)" + Arrays.toString(valueExtractCommand));
-            OutputStream cmdOut = new ByteArrayOutputStream();
-            OutputStream tee = new TeeOutputStream(keyProcess.getOutputStream(), new TeeOutputStream(valueProcess.getOutputStream(), cmdOut));
+            SimpleProcess.ProcessResult keysResult = getKeyCommand.execute(workingDirectory, dataResult.stdOut);
+            SimpleProcess.ProcessResult valuesResult = getValueCommand.execute(workingDirectory, dataResult.stdOut);
 
-            try {
-                IOUtils.copy(process.getInputStream(), tee); // intentionally we want to read stdout of one stream and pass it to the stdin of the other
-                IOUtils.copy(process.getErrorStream(), logErrProcess);
-                IOUtils.copy(keyProcess.getErrorStream(), logErrKey);
-                IOUtils.copy(valueProcess.getErrorStream(), logErrValue);
+            LOG.debug("{} out:\n{}\nkeys: {}, values: {}", jobId, dataResult, keysResult, valuesResult);
 
-                List<String> keys = extractLines(keyProcess.getInputStream(), pipeEncoding);
-                List<String> values = extractLines(valueProcess.getInputStream(), pipeEncoding);
+            List<String> keys = extractLines(keysResult.stdOut, pipeEncoding);
+            List<String> values = extractLines(valuesResult.stdOut, pipeEncoding);
 
-                awaitProcesses(process);
-                tee.flush();
-                awaitProcesses(keyProcess, valueProcess);
+            validateKeyValuePairs(keys, values);
+            pushKeyValuePairs(keys, values);
 
-                LOG.debug("{} out:\n{}\nkeys: {}, values: {}", jobId, cmdOut, keys, values);
-                validateKeyValuePairs(keys, values);
-                pushKeyValuePairs(keys, values);
-
-                // TODO/FIXME we need to keep state ...
-            } finally {
-                closeStreams(tee, logErrProcess, logErrKey, logErrValue);
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(toString() + " cannot be started", e);
+            jobState.setKey(keys.size() > 0 ? keys.get(keys.size() - 1) : null);
+            jobState.setValue(values.size() > 0 ? values.get(values.size() - 1) : null);
+        } catch (Exception e) {
+        } finally {
+            updateJobState.accept(jobState);
         }
     }
 
@@ -127,7 +115,7 @@ public class ShellTask extends Task {
     }
 
     private String substituteVariables(String command) {
-        // FIXME introduce groovy variable substituting here, this is where we need to read some state
+        // FIXME introduce groovy variable substituting here, this is where we need to read some state as well!
         try {
             return commandlineTemplateEngine.createTemplate(command)
                                             .make(variableBindings)
@@ -137,45 +125,12 @@ public class ShellTask extends Task {
         }
     }
 
-    private void setWorkingDirectory(ProcessBuilder... builders) {
-        for (ProcessBuilder builder : builders) {
-            builder.directory(workingDirectory);
-        }
-    }
-
-    private void awaitProcesses(Process... processes) {
-        for (int i = 0; i < processes.length; i++) {
-            LOG.debug("process {}/{} exited: {}", i + 1, processes.length, awaitProcess(processes[i]));
-        }
-    }
-
-    private int awaitProcess(Process process) {
-        int returnCode = -1;
+    private List<String> extractLines(final byte[] input, final String encoding) {
         try {
-            returnCode = process.waitFor();
-        } catch (InterruptedException e) {
-            LOG.error(toString() + " interupted", e);
-        } finally {
-            return returnCode;
+            return filterNonEmpty(new String(input, encoding).split(SPLIT_REGEX));
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException(e);
         }
-    }
-
-    private void closeStreams(OutputStream... streams) {
-        for (int i = 0; i < streams.length; i++) {
-            closeStream(streams[i]);
-        }
-    }
-
-    private void closeStream(OutputStream stream) {
-        try {
-            stream.close();
-        } catch (IOException e) {
-            LOG.trace("unable to close stream " + stream, e);
-        }
-    }
-
-    private List<String> extractLines(final InputStream input, final String encoding) throws IOException {
-        return filterNonEmpty(IOUtils.toString(input, encoding).split(SPLIT_REGEX));
     }
 
     private List<String> filterNonEmpty(String[] elements) {
@@ -186,7 +141,7 @@ public class ShellTask extends Task {
     }
 
     private String trim(String s) {
-        return s.replaceAll("^\\s+|\\s$", "");
+        return s.replaceAll("^\\s+|\\s+$", "");
     }
 
     private void validateKeyValuePairs(List<String> keys, List<String> values) {
@@ -198,28 +153,6 @@ public class ShellTask extends Task {
         if (keyValueConsumer != null) {
             for (int i = 0; i < keys.size(); i++) {
                 keyValueConsumer.accept(keys.get(i), values.get(i));
-            }
-        }
-    }
-
-    private class LogStream extends OutputStream {
-        final StringBuilder buffer = new StringBuilder();
-        final String id;
-
-        public LogStream(String id) {
-            this.id = id;
-        }
-
-        @Override
-        public void write(int b) {
-            buffer.append((char) b);
-        }
-
-        @Override
-        public void close() throws IOException {
-            super.close();
-            if (buffer.length() > 0) {
-                LOG.error("Std-Error of {}\n{}", id, buffer.toString());
             }
         }
     }

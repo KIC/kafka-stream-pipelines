@@ -5,10 +5,10 @@
       "topic": "aapl.price",
       "dir": ".",
       "env": [],
-      "command": ["java", "-cp", "${CLASS_PATH}", "cli.Echo", "Hello World:22"],
+      "command": ["java", "-cp", "${CLASS_PATH}", "cli.Echo", "Hello World:22\nlala:44"],
       "defaultArgumentValues": {},
-      "keyExtractor": ["java", "-cp", "${CLASS_PATH}", "cli.Grep", "Hello World:22"],
-      "valueExtractor": ["java", "-cp", "${CLASS_PATH}", "cli.Echo", "Hello World:22"],
+      "keyExtractor": ["java", "-cp", "${CLASS_PATH}", "cli.Split", ":", "0"],
+      "valueExtractor": ["java", "-cp", "${CLASS_PATH}", "cli.Split", ":", "1"],
       "encoding": "UTF-8",
       "schedule": {
           "minutes": "*",

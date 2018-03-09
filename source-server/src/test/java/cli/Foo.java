@@ -17,11 +17,10 @@ public class Foo {
         OutputStream stdInB = pB.getOutputStream();
         ByteArrayOutputStream cmdInB2 = new ByteArrayOutputStream();
 
-        OutputStream tee = new TeeOutputStream(stdInB, stdInB);
+        OutputStream tee = new TeeOutputStream(stdInB, cmdInB2);
         IOUtils.copy(stdErrA, tee);
 
         pA.waitFor();
-        stdInB.close();
         pB.waitFor();
 
         System.out.println(IOUtils.toString(pB.getInputStream(), "UTF-8"));

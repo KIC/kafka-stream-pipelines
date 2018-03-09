@@ -17,6 +17,24 @@
           "month": "*",
           "daysOfWeek": "*"
       }
+    },
+    {
+      "id": "2",
+      "topic": "aapl.price",
+      "dir": ".",
+      "env": [],
+      "command": ["bash", "-c", "curl -s \"https://query1.finance.yahoo.com/v8/finance/chart/AAPL?interval=2m\""],
+      "defaultArgumentValues": {},
+      "keyExtractor": ["java", "-version"],
+      "valueExtractor": ["java", "-version"],
+      "encoding": "UTF-8",
+      "schedule": {
+          "minutes": "*",
+          "hours": "*",
+          "days": "*",
+          "month": "*",
+          "daysOfWeek": "*"
+      }
     }
   ]
 }
