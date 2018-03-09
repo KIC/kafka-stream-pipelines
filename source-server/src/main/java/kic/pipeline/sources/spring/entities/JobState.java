@@ -1,15 +1,20 @@
 package kic.pipeline.sources.spring.entities;
 
+import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Lob;
+import javax.persistence.Table;
 
 @Entity
+@Table(name = "job_state")
 public class JobState {
     @Id private String jobId;
     @Lob private String stdOut;
     @Lob private String stdErr;
+    @Column(name="last_key")
     private String key;
+    @Column(name="last_value")
     private String value;
 
     protected JobState() {}
@@ -60,5 +65,16 @@ public class JobState {
 
     public void setValue(String value) {
         if (value != null) this.value = value;
+    }
+
+    @Override
+    public String toString() {
+        return "JobState{" +
+                "jobId='" + jobId + '\'' +
+                ", stdOut='" + stdOut + '\'' +
+                ", stdErr='" + stdErr + '\'' +
+                ", key='" + key + '\'' +
+                ", value='" + value + '\'' +
+                '}';
     }
 }

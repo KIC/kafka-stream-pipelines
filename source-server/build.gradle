@@ -18,7 +18,10 @@ dependencies {
 
     compile 'org.springframework.boot:spring-boot-starter'
     compile 'org.springframework.boot:spring-boot-starter-data-jpa'
+    compile 'org.springframework.boot:spring-boot-starter-data-jdbc'
+
     compile 'com.h2database:h2'
+    compile 'mysql:mysql-connector-java:5.1.20'
 
     compile 'it.sauronsoftware.cron4j:cron4j:2.2.5'
     compile 'org.codehaus.groovy:groovy-all:2.4.13'

@@ -28,3 +28,5 @@ node/
 node_modules/
 
 *.db
+
+application-mysql.properties

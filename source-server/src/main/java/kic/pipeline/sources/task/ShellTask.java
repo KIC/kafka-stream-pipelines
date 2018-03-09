@@ -84,6 +84,7 @@ public class ShellTask extends Task {
             validateKeyValuePairs(keys, values);
             pushKeyValuePairs(keys, values);
 
+            // FIXME only set key which could be processed by pushKeyValuePairs
             jobState.setKey(keys.size() > 0 ? keys.get(keys.size() - 1) : null);
             jobState.setValue(values.size() > 0 ? values.get(values.size() - 1) : null);
         } catch (Exception e) {
