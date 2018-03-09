@@ -23,7 +23,6 @@ public class ShellTask extends Task {
     private static final String SPLIT_REGEX = "(\\r\\n)+|\\n+";
 
     private final GStringTemplateEngine commandlineTemplateEngine = new GStringTemplateEngine();
-    private final Map variableBindings = new HashMap();
     private final String jobId;
     private final String pipeEncoding;
     private final String schedule;
@@ -44,7 +43,9 @@ public class ShellTask extends Task {
                      List<String> keyExtractCommand,
                      List<String> valueExtractCommand,
                      BiConsumer<String, String> keyValueConsumer,
-                     Function<String, JobState> getJobState, Consumer<JobState> updateJobState) {
+                     Function<String, JobState> getJobState,
+                     Consumer<JobState> updateJobState
+    ) {
         this.jobId = jobId;
         this.pipeEncoding = pipeEncoding;
         this.schedule = schedule;
@@ -55,16 +56,17 @@ public class ShellTask extends Task {
         this.valueExtractCommand = valueExtractCommand;
         this.getJobState = getJobState != null ? getJobState : id -> new JobState(id);
         this.updateJobState = updateJobState != null ? updateJobState : s -> {};
-        variableBindings.put("CLASS_PATH", System.getProperty("java.class.path"));
     }
 
 
     @Override
     public void execute(TaskExecutionContext context) throws RuntimeException {
         JobState jobState = getJobState.apply(jobId);
-        SimpleProcess dataCommand = new SimpleProcess(generateProcessCommand(command));
-        SimpleProcess getKeyCommand = new SimpleProcess(generateProcessCommand(keyExtractCommand));
-        SimpleProcess getValueCommand = new SimpleProcess(generateProcessCommand(valueExtractCommand));
+        Map stateVariables = fetchVariables(jobState);
+
+        SimpleProcess dataCommand = new SimpleProcess(generateProcessCommand(command, stateVariables));
+        SimpleProcess getKeyCommand = new SimpleProcess(generateProcessCommand(keyExtractCommand, stateVariables));
+        SimpleProcess getValueCommand = new SimpleProcess(generateProcessCommand(valueExtractCommand, stateVariables));
 
         try {
             SimpleProcess.ProcessResult dataResult = dataCommand.execute(workingDirectory, new byte[0]);
@@ -90,6 +92,10 @@ public class ShellTask extends Task {
         }
     }
 
+    public String getJobId() {
+        return jobId;
+    }
+
     public String getScheduleId() {
         return scheduleId;
     }
@@ -108,17 +114,25 @@ public class ShellTask extends Task {
     }
 
 
-    private String[] generateProcessCommand(List<String> command) {
+
+    private Map fetchVariables(JobState jobState) {
+        Map variables = new HashMap();
+        variables.put("CLASS_PATH", System.getProperty("java.class.path"));
+        variables.put("LAST_KEY", jobState.getKey());
+        variables.put("LAST_VALUE", jobState.getValue());
+        return variables;
+    }
+
+    private String[] generateProcessCommand(List<String> command, Map variables) {
         return command.stream()
-                      .map(this::substituteVariables)
+                      .map(c -> substituteVariables(c, variables))
                       .toArray(i -> new String[i]);
     }
 
-    private String substituteVariables(String command) {
-        // FIXME introduce groovy variable substituting here, this is where we need to read some state as well!
+    private String substituteVariables(String command, Map variables) {
         try {
             return commandlineTemplateEngine.createTemplate(command)
-                                            .make(variableBindings)
+                                            .make(variables)
                                             .toString();
         } catch (Exception e) {
             throw new RuntimeException(e);
