@@ -4,18 +4,24 @@ import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Lob;
+import javax.persistence.PrePersist;
+import javax.persistence.PreUpdate;
 import javax.persistence.Table;
+import javax.persistence.Version;
+import java.time.ZonedDateTime;
 
 @Entity
 @Table(name = "job_state")
 public class JobState {
     @Id private String jobId;
+    @Version private Long version;
     @Lob private String stdOut;
     @Lob private String stdErr;
     @Column(name="last_key")
     private String key;
     @Column(name="last_value")
     private String value;
+    private Long createdAt;
 
     protected JobState() {}
 
@@ -29,6 +35,12 @@ public class JobState {
         this.stdErr = stdErr;
         this.key = key;
         this.value = value;
+    }
+
+    @PrePersist
+    @PreUpdate
+    void addTimestamp() {
+        createdAt = ZonedDateTime.now().toEpochSecond();
     }
 
     public String getJobId() {

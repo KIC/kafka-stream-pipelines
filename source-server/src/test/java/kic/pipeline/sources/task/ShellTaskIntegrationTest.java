@@ -1,6 +1,8 @@
 package kic.pipeline.sources.task;
 
 import kic.pipeline.sources.spring.entities.JobState;
+import kic.pipeline.sources.spring.entities.KeyValueLog;
+import kic.pipeline.sources.spring.repository.JobLogRepository;
 import kic.pipeline.sources.spring.repository.JobRepository;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -22,8 +24,19 @@ public class ShellTaskIntegrationTest {
     @Autowired
     private JobRepository jobStateService;
 
+    @Autowired
+    private JobLogRepository jobLogService;
+
+    @Test(expected = org.springframework.dao.DataIntegrityViolationException.class)
+    public void testDuplicateKey() {
+        KeyValueLog log1 = new KeyValueLog("a", "b", "c");
+        KeyValueLog log2 = new KeyValueLog("a", "b", "c");
+        jobLogService.save(log1);
+        jobLogService.save(log2);
+    }
+
     @Test
-    public void execute() {
+    public void testExecuteShellTask() {
         ShellTask shelltask = createShelltask();
         shelltask.execute(null);
         JobState result = jobStateService.findOne("job-123");

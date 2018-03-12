@@ -4,6 +4,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
 
 import static java.util.stream.Collectors.toList;
 
@@ -32,6 +33,14 @@ public class Records<K, V> {
 
     public List<V> values() {
         return entries.stream().map(cr -> cr.value()).collect(toList());
+    }
+
+    public Optional<ConsumerRecord<K, V>> first() {
+        return size() > 0 ? Optional.of(entries.get(0)) : Optional.empty();
+    }
+
+    public Optional<ConsumerRecord<K, V>> last() {
+        return size() > 0 ? Optional.of(entries.get(size() - 1)) : Optional.empty();
     }
 
     public long getFirstOffset() {

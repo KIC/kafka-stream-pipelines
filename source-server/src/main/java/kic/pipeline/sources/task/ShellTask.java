@@ -61,9 +61,12 @@ public class ShellTask extends Task {
 
     @Override
     public void execute(TaskExecutionContext context) throws RuntimeException {
+        // TODO intorduce a key, value supplier and if this one fails just fail the whole job with a runtume exception
+        // this will be useful if we ask kafka for the lastes key, value of a topic and then fail if kafka is not there
         JobState jobState = getJobState.apply(jobId);
-        Map stateVariables = fetchVariables(jobState);
+        LOG.debug("{} last job state is {}", jobId, jobState);
 
+        Map stateVariables = fetchVariables(jobState);
         SimpleProcess dataCommand = new SimpleProcess(generateProcessCommand(command, stateVariables));
         SimpleProcess getKeyCommand = new SimpleProcess(generateProcessCommand(keyExtractCommand, stateVariables));
         SimpleProcess getValueCommand = new SimpleProcess(generateProcessCommand(valueExtractCommand, stateVariables));
@@ -89,6 +92,7 @@ public class ShellTask extends Task {
             jobState.setValue(values.size() > 0 ? values.get(values.size() - 1) : null);
         } catch (Exception e) {
         } finally {
+            LOG.debug("{} set last job state to {}", jobId, jobState);
             updateJobState.accept(jobState);
         }
     }
@@ -121,6 +125,8 @@ public class ShellTask extends Task {
         variables.put("CLASS_PATH", System.getProperty("java.class.path"));
         variables.put("LAST_KEY", jobState.getKey());
         variables.put("LAST_VALUE", jobState.getValue());
+
+        LOG.debug("{} newest job variables are {}", jobId, variables);
         return variables;
     }
 

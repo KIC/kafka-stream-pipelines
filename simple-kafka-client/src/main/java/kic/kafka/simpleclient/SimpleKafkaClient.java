@@ -115,16 +115,21 @@ public class SimpleKafkaClient {
 
     public void seek(KafkaConsumer<?, ?> consumer, String topic, long offset) {
         LOG.debug("'{}' seek {}", topic, offset);
-        List<TopicPartition> topicPartitions = Arrays.asList(new TopicPartition(topic, 0));
+        TopicPartition topicPartition = new TopicPartition(topic, 0);
+        List<TopicPartition> topicPartitions = Arrays.asList(topicPartition);
 
         if (offset >= 0) {
             // we only support one partition at the moment
-            for (TopicPartition topicPartition : topicPartitions)
-                consumer.seek(topicPartition, offset);
+            consumer.seek(topicPartition, offset);
         } else {
             consumer.seekToEnd(topicPartitions);
+            if (offset < -1) {
+                long lastPosition = consumer.position(topicPartition) - offset;
+                consumer.seek(topicPartition, lastPosition);
+            }
         }
     }
+
 
     // FIXME we should add the same logic with passing classes like in the comsumer: Class<K> keyClass, Class<V> valueClass
     public KafkaSimpleStream streaming(String streamId) {

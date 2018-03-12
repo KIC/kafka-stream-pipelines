@@ -2,6 +2,8 @@ package kic.pipeline.sources;
 
 import kic.pipeline.sources.spring.components.JobsResourceWatcher;
 import kic.pipeline.sources.spring.components.SchedulerComponent;
+import kic.pipeline.sources.spring.entities.KeyValueLog;
+import kic.pipeline.sources.spring.repository.JobLogRepository;
 import kic.pipeline.sources.spring.repository.JobRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,7 +28,9 @@ public class CronDaemon implements CommandLineRunner {
     private ApplicationContext context;
 
     @Autowired
-    private JobRepository jobStateService;
+    private JobRepository jobStateRepository;
+    @Autowired
+    private JobLogRepository jobLogRepository;
 
     @Autowired(required = false)
     private JobsResourceWatcher watcher;
@@ -61,9 +65,9 @@ public class CronDaemon implements CommandLineRunner {
                                           jobs -> scheduler.updateSchedules(jobs,
                                                                             job -> watcher.createShelltaskFromJob(job,
                                                                                                                   workingDirectory,
-                                                                                                                  keyValueConsumer,
-                                                                                                                  jobStateService::findOrNew,
-                                                                                                                  jobStateService::save)));
+                                                                                                                  decoreateKeyValueConsumerIncludingLog(job.id),
+                                                                                                                  jobStateRepository::findOrNew, // FIXME somehow dynamically wire Simplekafakclient#poll(??, -2)
+                                                                                                                  jobStateRepository::save)));
             }
         }
     }
@@ -76,10 +80,11 @@ public class CronDaemon implements CommandLineRunner {
         }
     }
 
-
-    private void overrideKeyValueConsumer() {
-        keyValueConsumer = (k, v) -> System.out.println("\n---\nkey: " + k + "\nvalue: " + v + "\n---\n");
+    private BiConsumer<String, String> decoreateKeyValueConsumerIncludingLog(String jobId) {
+        return (key, value) -> {
+            jobLogRepository.save(new KeyValueLog(jobId, key, value));
+            keyValueConsumer.accept(key, value);
+        };
     }
-
 
 }
