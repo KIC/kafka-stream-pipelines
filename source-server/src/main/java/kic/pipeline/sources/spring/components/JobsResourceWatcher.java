@@ -2,7 +2,6 @@ package kic.pipeline.sources.spring.components;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import kic.pipeline.sources.dto.Jobs;
-import kic.pipeline.sources.spring.entities.JobState;
 import kic.pipeline.sources.task.ShellTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,9 +10,9 @@ import org.springframework.stereotype.Component;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.Supplier;
 
 @Component
@@ -73,8 +72,8 @@ public class JobsResourceWatcher {
     public ShellTask createShelltaskFromJob(Jobs.Job job,
                                             String workingDirectory,
                                             BiConsumer<String, String> keyValueConsumer,
-                                            Function<String, JobState> getJobState,
-                                            Consumer<JobState> updateJobState
+                                            Supplier<Map> getJobState,
+                                            Consumer<Exception> exceptionHandler
     ) {
         return new ShellTask(job.id,
                              job.encoding,
@@ -85,7 +84,7 @@ public class JobsResourceWatcher {
                              job.valueExtractor,
                              keyValueConsumer,
                              getJobState,
-                             updateJobState);
+                             exceptionHandler);
     }
 
 

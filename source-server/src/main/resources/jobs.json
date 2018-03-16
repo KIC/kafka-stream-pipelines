@@ -35,6 +35,24 @@
           "month": "*",
           "daysOfWeek": "*"
       }
+    },
+    {
+      "id": "-1",
+      "topic": "fail",
+      "dir": ".",
+      "env": [],
+      "command": ["not-valid-command"],
+      "defaultArgumentValues": {},
+      "keyExtractor": ["java", "-version"],
+      "valueExtractor": ["java", "-version"],
+      "encoding": "UTF-8",
+      "schedule": {
+          "minutes": "*",
+          "hours": "*",
+          "days": "*",
+          "month": "*",
+          "daysOfWeek": "*"
+      }
     }
   ]
 }

@@ -5,6 +5,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import java.io.File;
 import java.io.IOException;
+import static java.util.stream.Collectors.*;
 
 // TODO this class need to operate on streams insted of this heap intense byte arrays
 // however for the moment this makes devlopment much easier
@@ -36,23 +37,35 @@ public class SimpleProcess {
             stdOut = IOUtils.toByteArray(process.getInputStream());
             stdErr = IOUtils.toByteArray(process.getErrorStream());
 
-            return new ProcessResult(stdOut, stdErr, process.waitFor(), null);
+            return new ProcessResult(getCommandString(), stdOut, stdErr, process.waitFor(), null);
         } catch (Exception e) {
-            return new ProcessResult(stdOut, stdErr, Integer.MIN_VALUE, e);
+            return new ProcessResult(getCommandString(), stdOut, stdErr, Integer.MIN_VALUE, e);
         }
     }
 
+    public String getCommandString() {
+        return processBuilder.command().stream().collect(joining(" "));
+    }
+
     public static class ProcessResult {
+        public final String command;
         public final byte[] stdOut;
         public final byte[] stdErr;
         public final int returnCode;
-        public final Throwable exception;
+        public final Exception exception;
 
-        public ProcessResult(byte[] stdOut, byte[] stdErr, int returnCode, Throwable exception) {
+        public ProcessResult(String command, byte[] stdOut, byte[] stdErr, int returnCode, Exception exception) {
+            this.command = command;
             this.stdOut = stdOut;
             this.stdErr = stdErr;
             this.returnCode = returnCode;
             this.exception = exception;
+        }
+
+        public void retrowExceptionIfCaughtWithMsg(String msg) throws ProcessException {
+            if (exception != null) {
+                throw new ProcessException(command, exception, msg, new String(stdOut), new String(stdErr));
+            }
         }
 
         @Override
@@ -63,6 +76,22 @@ public class SimpleProcess {
                     ", returnCode=" + returnCode +
                     ", exception=" + (exception == null ? "" : ExceptionUtils.getStackTrace(exception)) +
                     '}';
+        }
+    }
+
+    public static class ProcessException extends IOException {
+        public final String msg;
+        public final String stdOut;
+        public final String stdErr;
+
+        public ProcessException(String command, Exception exception, String msg, String stdOut, String stdErr) {
+            super(command + "\nmsg:" + msg +
+                            "\nout:" + new String(stdOut) +
+                            "\nerr:" + new String(stdErr),
+                  exception);
+            this.msg = msg;
+            this.stdOut = stdOut;
+            this.stdErr = stdErr;
         }
     }
 }

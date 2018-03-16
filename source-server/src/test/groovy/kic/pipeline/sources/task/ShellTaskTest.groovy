@@ -15,7 +15,7 @@ class ShellTaskTest extends Specification {
         def jobspecs = JSON.readValue(ClassLoader.getSystemResourceAsStream("jobs.json"), Jobs.class)
         def job = jobspecs.jobs.find {it.id == "test-1"}
         def consumer = {k,v -> result[(k)] = v} as BiConsumer
-        def task = new ShellTask(job.id, job.encoding, "", new File("."), job.command, job.keyExtractor, job.valueExtractor, consumer, null, null)
+        def task = new ShellTask(job.id, job.encoding, "", new File("."), job.command, job.keyExtractor, job.valueExtractor, consumer)
 
         when:
         task.execute(null)

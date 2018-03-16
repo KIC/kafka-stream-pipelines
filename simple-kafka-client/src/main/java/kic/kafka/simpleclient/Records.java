@@ -2,6 +2,7 @@ package kic.kafka.simpleclient;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
@@ -12,11 +13,20 @@ public class Records<K, V> {
     public final List<ConsumerRecord<K, V>> entries;
     public final long firstOffset;
     public final long lastOffset;
+    public final Exception error;
+
+    public Records(Exception error) {
+        this.entries = new ArrayList<>();
+        this.firstOffset = -1;
+        this.lastOffset = -1;
+        this.error = error;
+    }
 
     public Records(List<ConsumerRecord<K, V>> records, long firstOffset, long lastOffset) {
         this.entries = records;
         this.firstOffset = firstOffset;
         this.lastOffset = lastOffset;
+        this.error = null;
     }
 
     public Iterator<ConsumerRecord<K, V>> iterator() {
@@ -41,6 +51,14 @@ public class Records<K, V> {
 
     public Optional<ConsumerRecord<K, V>> last() {
         return size() > 0 ? Optional.of(entries.get(size() - 1)) : Optional.empty();
+    }
+
+    public boolean hasError() {
+        return error != null;
+    }
+
+    public Exception getError() {
+        return error;
     }
 
     public long getFirstOffset() {

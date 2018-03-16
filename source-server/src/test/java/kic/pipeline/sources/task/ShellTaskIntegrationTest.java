@@ -51,9 +51,7 @@ public class ShellTaskIntegrationTest {
                              Arrays.asList("java", "-cp", "${CLASS_PATH}", "cli.Echo", "Hello World:22\nlala:44"),
                              Arrays.asList("java", "-cp", "${CLASS_PATH}", "cli.Split", ":", "0"),
                              Arrays.asList("java", "-cp", "${CLASS_PATH}", "cli.Split", ":", "1"),
-                             (k, v) -> {},
-                             jobStateService::findOrNew,
-                             jobStateService::save);
+                             (k, v) -> {});
     }
 
 }

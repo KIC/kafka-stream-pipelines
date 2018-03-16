@@ -3,7 +3,6 @@ package kic.pipeline.sources.task;
 import groovy.text.GStringTemplateEngine;
 import it.sauronsoftware.cron4j.Task;
 import it.sauronsoftware.cron4j.TaskExecutionContext;
-import kic.pipeline.sources.spring.entities.JobState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,7 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
-import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class ShellTask extends Task {
@@ -31,8 +30,8 @@ public class ShellTask extends Task {
     private final List<String> keyExtractCommand;
     private final List<String> valueExtractCommand;
     private final BiConsumer<String, String> keyValueConsumer;
-    private final Function<String, JobState> getJobState;
-    private final Consumer<JobState> updateJobState;
+    private final Supplier<Map> getJobState;
+    private final Consumer<Exception> exceptionHandler;
     private String scheduleId = null;
 
     public ShellTask(String jobId,
@@ -42,9 +41,21 @@ public class ShellTask extends Task {
                      List<String> command,
                      List<String> keyExtractCommand,
                      List<String> valueExtractCommand,
+                     BiConsumer<String, String> keyValueConsumer
+    ) {
+        this(jobId, pipeEncoding, schedule, workingDirectory, command, keyExtractCommand, valueExtractCommand, keyValueConsumer, null, null);
+    }
+
+    public ShellTask(String jobId,
+                     String pipeEncoding,
+                     String schedule,
+                     File workingDirectory,
+                     List<String> command,
+                     List<String> keyExtractCommand,
+                     List<String> valueExtractCommand,
                      BiConsumer<String, String> keyValueConsumer,
-                     Function<String, JobState> getJobState,
-                     Consumer<JobState> updateJobState
+                     Supplier<Map> getJobState,
+                     Consumer<Exception> exceptionHandler
     ) {
         this.jobId = jobId;
         this.pipeEncoding = pipeEncoding;
@@ -54,80 +65,39 @@ public class ShellTask extends Task {
         this.command = command;
         this.keyExtractCommand = keyExtractCommand;
         this.valueExtractCommand = valueExtractCommand;
-        this.getJobState = getJobState != null ? getJobState : id -> new JobState(id);
-        this.updateJobState = updateJobState != null ? updateJobState : s -> {};
+        this.getJobState = getJobState != null ? getJobState : HashMap::new;
+        this.exceptionHandler = exceptionHandler != null ? exceptionHandler : this::throwAsRuntimeException;
     }
 
 
     @Override
     public void execute(TaskExecutionContext context) throws RuntimeException {
-        // TODO intorduce a key, value supplier and if this one fails just fail the whole job with a runtume exception
-        // this will be useful if we ask kafka for the lastes key, value of a topic and then fail if kafka is not there
-        JobState jobState = getJobState.apply(jobId);
-        LOG.debug("{} last job state is {}", jobId, jobState);
-
-        Map stateVariables = fetchVariables(jobState);
-        SimpleProcess dataCommand = new SimpleProcess(generateProcessCommand(command, stateVariables));
-        SimpleProcess getKeyCommand = new SimpleProcess(generateProcessCommand(keyExtractCommand, stateVariables));
-        SimpleProcess getValueCommand = new SimpleProcess(generateProcessCommand(valueExtractCommand, stateVariables));
+        Map jobState = getJobState.get();
+        SimpleProcess dataCommand = new SimpleProcess(generateProcessCommand(command, jobState));
+        SimpleProcess getKeyCommand = new SimpleProcess(generateProcessCommand(keyExtractCommand, jobState));
+        SimpleProcess getValueCommand = new SimpleProcess(generateProcessCommand(valueExtractCommand, jobState));
 
         try {
             SimpleProcess.ProcessResult dataResult = dataCommand.execute(workingDirectory, new byte[0]);
-            jobState.setStdOut(new String(dataResult.stdOut, pipeEncoding));
-            jobState.setStdErr(new String(dataResult.stdErr, pipeEncoding));
+            dataResult.retrowExceptionIfCaughtWithMsg(jobId);
 
             SimpleProcess.ProcessResult keysResult = getKeyCommand.execute(workingDirectory, dataResult.stdOut);
+            keysResult.retrowExceptionIfCaughtWithMsg(jobId);
+
             SimpleProcess.ProcessResult valuesResult = getValueCommand.execute(workingDirectory, dataResult.stdOut);
+            valuesResult.retrowExceptionIfCaughtWithMsg(jobId);
 
             LOG.debug("{} out:\n{}\nkeys: {}, values: {}", jobId, dataResult, keysResult, valuesResult);
-
             List<String> keys = extractLines(keysResult.stdOut, pipeEncoding);
             List<String> values = extractLines(valuesResult.stdOut, pipeEncoding);
 
             validateKeyValuePairs(keys, values);
             pushKeyValuePairs(keys, values);
-
-            // FIXME only set key which could be processed by pushKeyValuePairs
-            jobState.setKey(keys.size() > 0 ? keys.get(keys.size() - 1) : null);
-            jobState.setValue(values.size() > 0 ? values.get(values.size() - 1) : null);
         } catch (Exception e) {
+            exceptionHandler.accept(e);
         } finally {
             LOG.debug("{} set last job state to {}", jobId, jobState);
-            updateJobState.accept(jobState);
         }
-    }
-
-    public String getJobId() {
-        return jobId;
-    }
-
-    public String getScheduleId() {
-        return scheduleId;
-    }
-
-    public String getSchedule() {
-        return schedule;
-    }
-
-    public void setScheduleId(String scheduleId) {
-        this.scheduleId = scheduleId;
-    }
-
-    @Override
-    public String toString() {
-        return jobId;
-    }
-
-
-
-    private Map fetchVariables(JobState jobState) {
-        Map variables = new HashMap();
-        variables.put("CLASS_PATH", System.getProperty("java.class.path"));
-        variables.put("LAST_KEY", jobState.getKey());
-        variables.put("LAST_VALUE", jobState.getValue());
-
-        LOG.debug("{} newest job variables are {}", jobId, variables);
-        return variables;
     }
 
     private String[] generateProcessCommand(List<String> command, Map variables) {
@@ -177,4 +147,31 @@ public class ShellTask extends Task {
             }
         }
     }
+
+    private void throwAsRuntimeException(Exception e) {
+        throw new RuntimeException(e);
+    }
+
+
+    public String getJobId() {
+        return jobId;
+    }
+
+    public String getScheduleId() {
+        return scheduleId;
+    }
+
+    public String getSchedule() {
+        return schedule;
+    }
+
+    public void setScheduleId(String scheduleId) {
+        this.scheduleId = scheduleId;
+    }
+
+    @Override
+    public String toString() {
+        return jobId;
+    }
+
 }

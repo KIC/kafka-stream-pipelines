@@ -6,10 +6,13 @@ import groovy.json.JsonSlurper
 import java.util.function.BiFunction
 import groovyx.net.http.Method
 import groovyx.net.http.ContentType
+
+import java.util.function.Function
+
 import static groovyx.net.http.ContentType.*
 import static groovyx.net.http.Method.*
 
-class RestLambda implements BiFunction<Object, Object, String> {
+class RestLambda implements BiFunction<Object, Object, String>, Function<Object, String> {
     final Method httpMethod
     final String urlTemplate
     final String payloadTemplate
@@ -20,6 +23,12 @@ class RestLambda implements BiFunction<Object, Object, String> {
         this.urlTemplate = urlTemplate
         this.payloadTemplate = payloadTemplate ?: ""
         this.payloadContentType = payloadContentType
+    }
+
+    @Override
+    String apply(Object state) {
+        RestExecutor executor = new RestExecutor([state: state])
+        return executor.executeTemplate(httpMethod, urlTemplate, payloadTemplate, payloadContentType).toString()
     }
 
     @Override

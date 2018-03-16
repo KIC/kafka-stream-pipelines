@@ -1,6 +1,5 @@
 package kic.pipeline.sources.spring.entities;
 
-import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Lob;
@@ -17,10 +16,7 @@ public class JobState {
     @Version private Long version;
     @Lob private String stdOut;
     @Lob private String stdErr;
-    @Column(name="last_key")
-    private String key;
-    @Column(name="last_value")
-    private String value;
+    @Lob private String errMsg;
     private Long createdAt;
 
     protected JobState() {}
@@ -29,12 +25,11 @@ public class JobState {
         this.jobId = jobId;
     }
 
-    public JobState(String jobId, String stdOut, String stdErr, String key, String value) {
+    public JobState(String jobId, String stdOut, String stdErr, String errMsg) {
         this.jobId = jobId;
         this.stdOut = stdOut;
         this.stdErr = stdErr;
-        this.key = key;
-        this.value = value;
+        this.errMsg = errMsg;
     }
 
     @PrePersist
@@ -63,21 +58,14 @@ public class JobState {
         this.stdErr = stdErr;
     }
 
-    public String getKey() {
-        return key;
+    public String getErrMsg() {
+        return errMsg;
     }
 
-    public void setKey(String key) {
-        if (key != null) this.key = key;
+    public void setErrMsg(String errMsg) {
+        this.errMsg = errMsg;
     }
 
-    public String getValue() {
-        return value;
-    }
-
-    public void setValue(String value) {
-        if (value != null) this.value = value;
-    }
 
     @Override
     public String toString() {
@@ -85,8 +73,7 @@ public class JobState {
                 "jobId='" + jobId + '\'' +
                 ", stdOut='" + stdOut + '\'' +
                 ", stdErr='" + stdErr + '\'' +
-                ", key='" + key + '\'' +
-                ", value='" + value + '\'' +
+                ", errMsg='" + errMsg + '\'' +
                 '}';
     }
 }

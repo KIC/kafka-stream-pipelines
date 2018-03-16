@@ -1,34 +1,42 @@
 package kic.pipeline.sources;
 
+import kic.pipeline.sources.dto.Jobs;
 import kic.pipeline.sources.spring.components.JobsResourceWatcher;
 import kic.pipeline.sources.spring.components.SchedulerComponent;
+import kic.pipeline.sources.spring.entities.JobState;
 import kic.pipeline.sources.spring.entities.KeyValueLog;
 import kic.pipeline.sources.spring.repository.JobLogRepository;
 import kic.pipeline.sources.spring.repository.JobRepository;
+import kic.pipeline.sources.task.SimpleProcess;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ApplicationContext;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 @SpringBootApplication
 public class CronDaemon implements CommandLineRunner {
     private static final Logger LOG = LoggerFactory.getLogger(CronDaemon.class);
-    //private static final ObjectMapper JSON = new ObjectMapper();
 
     @Autowired
     private ApplicationContext context;
 
     @Autowired
     private JobRepository jobStateRepository;
+
     @Autowired
     private JobLogRepository jobLogRepository;
 
@@ -38,14 +46,13 @@ public class CronDaemon implements CommandLineRunner {
     @Autowired(required = false)
     private SchedulerComponent scheduler;
 
-    @Autowired(required = false)
-    @Qualifier("KeyValueConsumer")
-    private BiConsumer<String, String> keyValueConsumer;
+    private Function<Object, String> fetchLastState;
+    private Function<Object, String> pushNewestState;
 
-    @Value("${jobs.resource}")
+    @Value("${application.jobs.resource}")
     private String jobsResource;
 
-    @Value("${application.working.dir}")
+    @Value("${application.jobs.working.dir}")
     private String workingDirectory;
 
     public static void main(String[] args) {
@@ -66,8 +73,8 @@ public class CronDaemon implements CommandLineRunner {
                                                                             job -> watcher.createShelltaskFromJob(job,
                                                                                                                   workingDirectory,
                                                                                                                   decoreateKeyValueConsumerIncludingLog(job.id),
-                                                                                                                  jobStateRepository::findOrNew, // FIXME somehow dynamically wire Simplekafakclient#poll(??, -2)
-                                                                                                                  jobStateRepository::save)));
+                                                                                                                  decoreateJobStateFetcher(job),
+                                                                                                                  decorateExceptionHandler(job.id))));
             }
         }
     }
@@ -80,11 +87,45 @@ public class CronDaemon implements CommandLineRunner {
         }
     }
 
+    private Supplier<Map> decoreateJobStateFetcher(Jobs.Job job) {
+        if (fetchLastState == null) return HashMap::new;
+
+        // FIXME
+        fetchLastState.apply(job);
+        String key = null;
+        String value = null;
+
+        try {
+            jobLogRepository.save(new KeyValueLog(job.id, key, value));
+        } catch (DataIntegrityViolationException duplicateKey) {
+            LOG.warn("last send message for job {} :: {} :: was not logged", job.id, key, value);
+        }
+
+        return null; // FIXME return something
+    }
+
     private BiConsumer<String, String> decoreateKeyValueConsumerIncludingLog(String jobId) {
+        HashMap<String, String> lambdaVariabes = new HashMap<>();
+
         return (key, value) -> {
+            LOG.debug("jobId: {} push {} :: {}", jobId, key, value);
+            lambdaVariabes.put("KEY", key);
+            lambdaVariabes.put("VALUE", value);
+            if (pushNewestState != null) pushNewestState.apply(lambdaVariabes);
             jobLogRepository.save(new KeyValueLog(jobId, key, value));
-            keyValueConsumer.accept(key, value);
         };
     }
 
+    private Consumer<Exception> decorateExceptionHandler(String jobId) {
+        return e -> {
+            if (e instanceof SimpleProcess.ProcessException) {
+                JobState logState = new JobState(jobId,
+                                                 ((SimpleProcess.ProcessException) e).stdOut,
+                                                 ((SimpleProcess.ProcessException) e).stdErr,
+                                                 ((SimpleProcess.ProcessException) e).msg);
+
+                jobStateRepository.save(logState);
+            }
+        };
+    }
 }

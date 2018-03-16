@@ -76,11 +76,13 @@ public class SimpleKafkaClient {
         // Hide away the kafkaConsumer, we keep the consumers depending on a name + a topic in a caffeine cache
         ConsumerCacheKey cacheKey = new ConsumerCacheKey(name, topic, keyClass, valueClass);
         long rebalanceTimeout = 10000L;
+        Exception error = null;
 
         // only one poll at a time for the same kafkaConsumer is allowed
         synchronized (cacheKey.getLockObject()) {
             for (int retry = 0; retry < MAX_RETRIES; retry++) {
                 try {
+                    error = null;
                     CachedConsumer cachedConsumer = consumers.get(cacheKey);
                     KafkaConsumer<K, V> consumer = (KafkaConsumer<K, V>) cachedConsumer.kafkaConsumer;
 
@@ -103,6 +105,7 @@ public class SimpleKafkaClient {
 
                     return recordsAndOffset;
                 } catch (Exception e) {
+                    error = e;
                     LOG.warn("poll failed - retry {}/{}\n{}", retry + 1, MAX_RETRIES, e);
                     consumers.invalidate(cacheKey);
                 }
@@ -110,7 +113,7 @@ public class SimpleKafkaClient {
         }
 
         // if everyting fails return and emtpy list
-        return new Records<>(new ArrayList<>(), -1, -1);
+        return new Records<>(error);
     }
 
     public void seek(KafkaConsumer<?, ?> consumer, String topic, long offset) {
